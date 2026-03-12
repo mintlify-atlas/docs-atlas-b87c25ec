@@ -1,0 +1,357 @@
+---
+title: "Clans"
+description: "Clan system, clan pages, clan leaderboards, and member management"
+---
+
+Guccho includes a comprehensive clan system that allows players to form groups, compete together, and track collective achievements.
+
+## Overview
+
+Clans are player-organized groups with dedicated pages showing members, statistics, and best scores.
+
+<CardGroup cols={2}>
+  <Card title="Clan Pages" icon="flag">
+    Dedicated pages with member lists and clan statistics
+  </Card>
+  <Card title="Clan Search" icon="search">
+    Browse and search all clans on the server
+  </Card>
+  <Card title="Member Management" icon="users">
+    Join, leave, and manage clan memberships
+  </Card>
+  <Card title="Clan Leaderboards" icon="trophy">
+    Best scores from clan members across all modes
+  </Card>
+</CardGroup>
+
+## Clan Directory
+
+The main clans page (`/clans`) displays all clans on the server.
+
+### Search Functionality
+
+Search for clans by:
+
+- **Clan name**: Full or partial name matching
+- **Badge**: Clan tag/badge text
+
+<Steps>
+  <Step title="Enter Search Term">
+    Type a clan name or badge in the search box.
+  </Step>
+  <Step title="Submit Search">
+    Press Enter or click the Search button.
+  </Step>
+  <Step title="View Results">
+    Matching clans are displayed in a grid layout.
+  </Step>
+</Steps>
+
+### Grid Display
+
+Clans are shown in a responsive grid:
+
+- **Clan Avatar**: Large clan image with badge overlay
+- **Clan Name**: Displayed prominently
+- **Member Avatars**: Up to several member avatars in an overlapping stack
+- **Member Count**: Total members if more than displayed
+- **Clan Statistics**: Average PP or total score depending on ranking system
+
+<Info>
+  The clan directory respects the selected mode, ruleset, and ranking system for statistics.
+</Info>
+
+### URL Parameters
+
+Clan search supports filtering via URL:
+
+```bash
+/clans?mode=:mode&ruleset=:ruleset&ranking=:system&keyword=:search
+```
+
+**Example:**
+```bash
+/clans?mode=osu&ruleset=std&ranking=PPv2&keyword=dragon
+```
+
+## Clan Pages
+
+Each clan has a dedicated page (`/clan/:id`) showing detailed information.
+
+### Clan Header
+
+The clan page header displays:
+
+- **Clan Avatar**: Large square image with rounded corners
+- **Clan Badge**: Displayed as an overlay on the avatar
+- **Clan Name**: Large heading text
+- **Owner Information**: Avatar and username of clan owner
+- **Creation Date**: When the clan was founded
+- **Member Count**: Total number of members
+
+### Clan Statistics
+
+Statistics vary by selected ranking system:
+
+<Tabs>
+  <Tab title="PPv2">
+    Shows average PP across all clan members:
+    ```
+    Average: {total PP / member count}pp
+    ```
+  </Tab>
+  <Tab title="PPv1">
+    Shows average PPv1 across all members:
+    ```
+    Average: {total PPv1 / member count}pp
+    ```
+  </Tab>
+  <Tab title="RankedScore">
+    Shows total ranked score:
+    ```
+    RankedScore: {total ranked score}
+    ```
+  </Tab>
+  <Tab title="TotalScore">
+    Shows total score:
+    ```
+    TotalScore: {total score}
+    ```
+  </Tab>
+</Tabs>
+
+## Member Management
+
+### Joining a Clan
+
+Players can join clans if they meet the requirements:
+
+<Steps>
+  <Step title="Navigate to Clan Page">
+    Find the clan you want to join via search or direct link.
+  </Step>
+  <Step title="Click Join Button">
+    Click the green plus icon button.
+  </Step>
+  <Step title="Wait for Verification">
+    Your join request may need approval depending on clan settings.
+  </Step>
+</Steps>
+
+<Warning>
+  Players can only be in one clan at a time. You must leave your current clan before joining another.
+</Warning>
+
+### Leaving a Clan
+
+Members can leave their clan at any time:
+
+<Steps>
+  <Step title="Go to Your Clan Page">
+    Navigate to your current clan's page.
+  </Step>
+  <Step title="Click Leave Button">
+    Click the red minus icon button.
+  </Step>
+  <Step title="Confirm">
+    Your clan membership will be removed.
+  </Step>
+</Steps>
+
+### Membership States
+
+Clan membership can be in several states:
+
+| State | Description | Actions Available |
+|-------|-------------|------------------|
+| **Free** | Not in any clan | Join |
+| **Member** | Active clan member | Leave |
+| **JoinPendingVerification** | Join request pending | Leave (cancel request) |
+| **QuitPendingVerification** | Leave request pending | - |
+| **Left** | Previously left clan | Join again |
+| **JoinedOtherClan** | Member of different clan | - |
+
+<Info>
+  Membership state is checked server-side to ensure data integrity.
+</Info>
+
+## Member List
+
+The clan page displays all members in a table:
+
+### Table Columns
+
+- **User**: Avatar, username, and country
+- Interactive rows link to user profiles
+
+### Pagination
+
+For clans with many members:
+
+- 20 members per page
+- Navigation buttons to jump between pages
+- Current page highlighted
+- Smart page range display (shows nearby pages)
+
+## Clan Best Scores
+
+The clan page shows the best scores from all clan members.
+
+### Score Display
+
+Each score entry shows:
+
+- **Player**: Member who set the score
+- **Beatmap**: Map name and difficulty
+- **Score Details**: Points, accuracy, combo, mods
+- **Performance**: PP or score value
+- **Date**: When the score was set
+
+### Filtering
+
+Scores can be filtered by:
+
+- **Mode**: osu!, taiko, catch, mania
+- **Ruleset**: Server-specific rulesets
+- **Ranking System**: PPv2, PPv1, RankedScore, TotalScore
+
+Use the mode switcher at the top to change filters.
+
+### Score Pagination
+
+- 10 scores per page (configurable)
+- Navigation similar to member pagination
+- Updates dynamically without page reload
+
+<Tip>
+  Clan best scores are a great way to see what your clan members are working on and celebrate top performances together.
+</Tip>
+
+## Clan Avatars and Badges
+
+### Clan Avatar
+
+Clans can set custom avatars:
+
+- Square images (1:1 aspect ratio recommended)
+- Displayed with rounded corners (squircle mask)
+- Shown on clan page, search results, and member profiles
+
+### Clan Badge
+
+The badge is a short text identifier:
+
+- Typically 2-5 characters
+- Displayed on clan avatar as overlay
+- Shown on member profiles
+- Used for quick clan identification
+
+<Note>
+  Avatar and badge management may be restricted to clan owners or administrators depending on server configuration.
+</Note>
+
+## Profile Integration
+
+Clan membership is displayed on user profiles:
+
+- Badge appears as overlay on user avatar
+- Tooltip shows full clan name
+- Clicking badge navigates to clan page
+
+## Clan Statistics Calculation
+
+### Average Performance
+
+For PP-based ranking systems:
+
+```typescript
+averagePP = totalClanPP / memberCount
+```
+
+### Total Score
+
+For score-based ranking systems:
+
+```typescript
+totalScore = sum(memberScores)
+```
+
+<Info>
+  Statistics are recalculated when members join or leave, and when member statistics change.
+</Info>
+
+## Implementation Details
+
+<Accordion title="Clan Page">
+  Clan pages are implemented in `src/pages/clan/[id].vue` with dynamic data loading based on mode/ruleset selection.
+</Accordion>
+
+<Accordion title="Clan Search">
+  The clan directory is in `src/pages/clans.vue` with server-side search functionality.
+</Accordion>
+
+<Accordion title="Data Queries">
+  ```typescript
+  // Clan detail query
+  {
+    id: string,
+    mode: ActiveMode,
+    ruleset: ActiveRuleset,
+    rankingSystem: LeaderboardRankingSystem
+  }
+  
+  // Clan members query
+  {
+    id: string,
+    page: number,
+    perPage: number  // Default: 20
+  }
+  
+  // Clan best scores query
+  {
+    id: string,
+    mode: ActiveMode,
+    ruleset: ActiveRuleset,
+    rankingSystem: LeaderboardRankingSystem,
+    page: number,
+    perPage: number  // Default: 10
+  }
+  ```
+</Accordion>
+
+<Accordion title="Relationship Management">
+  Clan relationships are managed server-side with proper validation:
+  - Players can only be in one clan
+  - Join/leave requests are atomic
+  - State transitions are validated
+  - Pending states prevent duplicate actions
+</Accordion>
+
+## Mobile Responsiveness
+
+Clan pages adapt to mobile devices:
+
+- Grid layout stacks on small screens
+- Tables scroll horizontally
+- Touch-optimized buttons
+- Condensed statistics display
+- Responsive member avatars
+
+## SEO Optimization
+
+Clan pages include metadata:
+
+- **Title**: `{clan name} - Clans`
+- **Description**: Clan information and statistics
+- Server-side rendering for fast initial load
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="User Pages" icon="user" href="/features/user-pages">
+    View individual player profiles with clan badges
+  </Card>
+  <Card title="Leaderboards" icon="ranking-star" href="/features/leaderboards">
+    Compare players globally across all clans
+  </Card>
+</CardGroup>

@@ -1,0 +1,120 @@
+---
+title: Installation
+description: Install Guccho and set up your development environment
+---
+
+## System Requirements
+
+Before installing Guccho, ensure your system meets the following requirements:
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node-js">
+    **Version 22.17.1 or higher** is required
+  </Card>
+  <Card title="Package Manager" icon="box">
+    **pnpm 9.15.1** is recommended (npm and yarn also supported)
+  </Card>
+</CardGroup>
+
+<Note>
+Guccho uses `pnpm@9.15.1` as specified in the `packageManager` field. While other package managers work, pnpm is recommended for optimal dependency management.
+</Note>
+
+## Additional Requirements
+
+Depending on your backend configuration, you'll also need:
+
+- **MySQL**: For database storage (bancho.py and ppy.sb backends)
+- **Redis**: For session storage and leaderboards (optional but recommended)
+- **Private osu! server**: A running instance of bancho.py or ppy.sb
+
+## Installing Dependencies
+
+<Steps>
+  <Step title="Clone the repository">
+    First, clone the Guccho repository to your local machine:
+    
+    ```bash
+    git clone https://github.com/ppy-sb/guccho.git
+    cd guccho
+    ```
+  </Step>
+
+  <Step title="Install Node.js">
+    Download and install Node.js 22.17.1 or higher from [nodejs.org](https://nodejs.org/).
+    
+    Verify your installation:
+    
+    ```bash
+    node --version
+    # Should output v22.17.1 or higher
+    ```
+  </Step>
+
+  <Step title="Install pnpm (recommended)">
+    If you don't have pnpm installed, install it globally:
+    
+    ```bash
+    npm install -g pnpm@9.15.1
+    ```
+    
+    Verify the installation:
+    
+    ```bash
+    pnpm --version
+    # Should output 9.15.1
+    ```
+  </Step>
+
+  <Step title="Install project dependencies">
+    Install all required dependencies using your preferred package manager:
+    
+    <CodeGroup>
+      ```bash pnpm
+      pnpm install
+      ```
+      
+      ```bash npm
+      npm install
+      ```
+      
+      ```bash yarn
+      yarn install
+      ```
+    </CodeGroup>
+    
+    <Note>
+    The postinstall script will automatically run build generation tasks and prepare Nuxt.
+    </Note>
+  </Step>
+</Steps>
+
+## Setting Up Database Tools (Optional)
+
+If you're using the `bancho.py` or `ppy.sb@bancho.py` backend, you can enable Drizzle ORM tooling:
+
+<Warning>
+Make sure to set the `DB_DSN` environment variable before running database-related commands.
+</Warning>
+
+```bash
+export DB_DSN="mysql://username:password@localhost:3306/database"
+```
+
+This enables features like database migrations and schema introspection.
+
+## Verifying Installation
+
+To verify that everything is installed correctly:
+
+```bash
+pnpm typecheck
+```
+
+If the command completes without errors, your installation is successful!
+
+## Next Steps
+
+<Card title="Quick Start" icon="rocket" href="/quickstart">
+  Continue to the Quick Start guide to configure and run Guccho
+</Card>

@@ -1,0 +1,250 @@
+---
+title: Internationalization (i18n)
+description: Configure multiple languages and translations in Guccho
+---
+
+## Overview
+
+Guccho uses Nuxt's i18n module (@nuxtjs/i18n) to provide multilingual support. The i18n system is configured with a layered approach, allowing you to customize translations at different levels.
+
+## Supported Languages
+
+Guccho currently supports four languages out of the box:
+
+- **en-GB** (English - International) - Default locale
+- **fr-FR** (French - France)
+- **de-DE** (German - Germany)
+- **zh-CN** (Chinese - Simplified)
+
+These are defined in `src/def/index.ts`:
+
+```typescript
+export enum Lang {
+  enGB = 'en-GB',
+  zhCN = 'zh-CN',
+  frFR = 'fr-FR',
+  deDE = 'de-DE',
+}
+```
+
+## Configuration
+
+### Locale Detection
+
+The i18n module is configured in `nuxt.config.ts` with automatic locale detection:
+
+```typescript
+i18n: {
+  strategy: 'no_prefix',
+  defaultLocale: Lang.enGB,
+  detectBrowserLanguage: {
+    useCookie: true,
+    cookieKey: Constant.CookieLangKey as string,
+    redirectOn: 'root',
+  },
+  locales: [
+    {
+      code: Lang.enGB,
+      flag: CountryCode.UnitedKingdom,
+      name: 'English (International)',
+    },
+    {
+      code: Lang.frFR,
+      flag: CountryCode.France,
+      name: 'French (France)',
+    },
+    {
+      code: Lang.deDE,
+      flag: CountryCode.Germany,
+      name: 'Deutsch (Deutschland)',
+    },
+    {
+      code: Lang.zhCN,
+      flag: CountryCode.China,
+      name: '简体中文 (中国)',
+    },
+  ],
+}
+```
+
+### Message Layers
+
+Translations are loaded in layers using `i18n.config.ts`:
+
+```typescript
+import ui from './guccho.ui.config'
+import { locales as serverMessages } from '$active/locales'
+import { Layer } from '~/common/utils'
+import { Lang } from '~/def'
+import clientMessages from '~/locales/base'
+import { every } from '~/locales/utils'
+
+const locales = new Layer(clientMessages)
+  .add(serverMessages)
+
+if (ui.legacyOption?.name) {
+  locales.add(every({ server: { name: ui.legacyOption.name } }))
+}
+if (ui.i18n?.messages) {
+  locales.add(ui.i18n.messages)
+}
+
+export default defineI18nConfig(() => {
+  return {
+    legacy: false,
+    locale: Lang.enGB,
+    fallbackLocale: Lang.enGB,
+    messages: locales.flat(),
+  }
+})
+```
+
+The layer priority (from lowest to highest):
+1. **Base client messages** (`~/locales/base`) - Core translations
+2. **Server messages** (`$active/locales`) - Backend-specific translations
+3. **Legacy server name** - Simple server name override
+4. **UI config messages** - Custom translations from `guccho.ui.config.ts`
+
+## Adding Custom Translations
+
+### Method 1: UI Config (Recommended)
+
+Add custom translations in your `guccho.ui.config.ts`:
+
+```typescript
+import { Lang } from './src/def'
+
+export default {
+  // ... other config
+  
+  i18n: {
+    messages: {
+      [Lang.enGB]: {
+        footer: {
+          blog: 'Blog',
+          nuxt: 'Nuxt',
+        },
+        server: {
+          name: 'My Server',
+        },
+      },
+      [Lang.frFR]: {
+        footer: {
+          blog: 'Blog',
+          nuxt: 'Nuxt',
+        },
+        server: {
+          name: 'Mon Serveur',
+        },
+      },
+      [Lang.zhCN]: {
+        footer: {
+          blog: '博客',
+          nuxt: 'Nuxt',
+        },
+        server: {
+          name: '我的服务器',
+        },
+      },
+    },
+  },
+}
+```
+
+### Method 2: Every Helper
+
+For translations that are the same across all languages, use the `every` helper:
+
+```typescript
+import { every } from '~/locales/utils'
+
+const commonTranslations = every({
+  server: {
+    name: 'Universal Server Name',
+  },
+})
+```
+
+This automatically creates the same translation for all supported languages.
+
+## Translation Structure
+
+Base translations are organized in `src/locales/base/{locale}.ts`. Here's an example structure from `en-GB.ts`:
+
+```typescript
+export default {
+  server: {
+    name: 'Guccho',
+  },
+  
+  footer: {
+    about: 'About',
+    resources: 'Resources',
+  },
+  
+  mode: {
+    [Mode.Osu]: 'Osu',
+    [Mode.Taiko]: 'Taiko',
+    [Mode.Fruits]: 'CTB',
+    [Mode.Mania]: 'Mania',
+  },
+  
+  title: {
+    'leaderboard': 'Leaderboard',
+    'status': 'Status',
+    'settings': 'Settings',
+  },
+  
+  global: {
+    'logout': 'Sign out',
+    'login': 'Sign in',
+    'register': 'Sign up',
+    'pp': 'pp',
+  },
+}
+```
+
+## Usage in Components
+
+Access translations in your components using the `$t` function:
+
+```vue
+<template>
+  <div>
+    <h1>{{ $t('server.name') }}</h1>
+    <p>{{ $t('title.leaderboard') }}</p>
+  </div>
+</template>
+```
+
+Or in script:
+
+```typescript
+const { t } = useI18n()
+const serverName = t('server.name')
+```
+
+## Locale Detector
+
+Guccho includes a custom server-side locale detector at `src/server/localeDetector.ts` (experimental feature) that can detect the user's preferred language based on browser settings and cookies.
+
+## Best Practices
+
+1. **Keep translations consistent** - Use the same key structure across all locales
+2. **Use nested objects** - Organize translations by feature or component
+3. **Leverage the layer system** - Override only what you need in higher layers
+4. **Test all languages** - Ensure all supported languages have complete translations
+5. **Use TypeScript** - The type system helps catch missing translations
+
+## Adding New Languages
+
+To add support for a new language:
+
+1. Add the language code to the `Lang` enum in `src/def/index.ts`
+2. Create translation files in `src/locales/base/{new-locale}.ts`
+3. Add the locale configuration to `nuxt.config.ts`
+4. Update the `every` helper in `src/locales/utils.ts` to include the new locale
+
+<Note>
+If you're interested in helping translate Guccho into other languages, please contact the maintainers.
+</Note>

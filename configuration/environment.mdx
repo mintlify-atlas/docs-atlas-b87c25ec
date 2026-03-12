@@ -1,0 +1,353 @@
+---
+title: Environment Variables
+description: Manage environment variables, secrets, and runtime configuration using .env files
+---
+
+Guccho uses environment variables for sensitive configuration like database credentials and API keys. This guide covers how to set up and use environment variables in your configuration files.
+
+## Setting Up Environment Variables
+
+Create a `.env` file in your project root by copying the example:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your actual values:
+
+```bash
+# Base URL for your site
+NUXT_PUBLIC_BASE_URL=ppy.sb
+
+# Database connection (required for bancho.py and ppy.sb@bancho.py)
+DB_DSN=mysql://username:password@localhost:3306/database
+
+# Redis connection (required if using redis session store)
+REDIS_URL=redis://localhost
+
+# Production deployment (optional)
+# HOST=127.0.0.1
+```
+
+<Warning>
+  Never commit your `.env` file to version control! It should be listed in `.gitignore`.
+</Warning>
+
+## Environment Variable Functions
+
+Guccho provides two utility functions for accessing environment variables in your configuration files:
+
+### env() - Required Variables
+
+<ParamField path="env(key)" type="function">
+  Retrieves a required environment variable. If the variable is not set, Guccho will fail to start.
+
+  **Use this for:**
+  - Essential credentials like database connections
+  - Required API keys
+  - Any configuration that must be present
+
+  ```typescript
+  import { env } from './src/server/common/utils'
+
+  export default {
+    dsn: env('DB_DSN'),  // Required - app won't start without it
+  }
+  ```
+
+  <Note>
+    The absence of a required variable will prevent Guccho from launching with a clear error message.
+  </Note>
+</ParamField>
+
+### safeEnv() - Optional Variables
+
+<ParamField path="safeEnv(key)" type="function">
+  Retrieves an optional environment variable. Returns `undefined` if not set.
+
+  **Use this for:**
+  - Optional configuration with sensible defaults
+  - Feature flags
+  - Non-critical settings
+
+  ```typescript
+  import { safeEnv } from './src/server/common/utils'
+
+  export default {
+    // Falls back to localhost if REDIS_URL is not set
+    redisURL: safeEnv('REDIS_URL') ?? 'redis://localhost',
+  }
+  ```
+
+  <Tip>
+    Use the nullish coalescing operator (`??`) to provide default values when the variable is not set.
+  </Tip>
+</ParamField>
+
+## Common Environment Variables
+
+### Database Connection
+
+<ParamField path="DB_DSN" type="string" required>
+  MySQL database connection string.
+
+  **Format:** `mysql://username:password@host:port/database`
+
+  **Example:**
+  ```bash
+  DB_DSN=mysql://guccho:secretpass@localhost:3306/gulag
+  ```
+
+  **Used in configuration:**
+  ```typescript
+  dsn: env('DB_DSN')
+  ```
+
+  <Warning>
+    This is required for both `bancho.py` and `ppy.sb@bancho.py` adapters.
+  </Warning>
+</ParamField>
+
+### Redis Connection
+
+<ParamField path="REDIS_URL" type="string">
+  Redis server connection URL.
+
+  **Format:** `redis://host:port`
+
+  **Default:** `redis://localhost`
+
+  **Example:**
+  ```bash
+  REDIS_URL=redis://localhost:6379
+  ```
+
+  **With authentication:**
+  ```bash
+  REDIS_URL=redis://:password@localhost:6379
+  ```
+
+  **Used in configuration:**
+  ```typescript
+  redisURL: safeEnv('REDIS_URL') ?? 'redis://localhost'
+  ```
+
+  <Note>
+    Required if you set `sessionStore: 'redis'` in your backend configuration.
+  </Note>
+</ParamField>
+
+### Public Base URL
+
+<ParamField path="NUXT_PUBLIC_BASE_URL" type="string">
+  Public-facing base URL for your server. This is accessible in both server and client code.
+
+  **Example:**
+  ```bash
+  NUXT_PUBLIC_BASE_URL=ppy.sb
+  ```
+
+  <Note>
+    Variables prefixed with `NUXT_PUBLIC_` are exposed to the client-side code. See [Nuxt runtime config](https://nuxt.com/docs/guide/going-further/runtime-config#environment-variables) for details.
+  </Note>
+</ParamField>
+
+### Production Deployment
+
+<ParamField path="HOST" type="string">
+  IP address to bind the server to in production.
+
+  **Default:** `0.0.0.0` (all interfaces)
+
+  **Example:**
+  ```bash
+  HOST=127.0.0.1
+  ```
+
+  <Tip>
+    Use `127.0.0.1` to only accept local connections, or `0.0.0.0` to accept connections from any interface.
+  </Tip>
+</ParamField>
+
+## Usage Examples
+
+### Required Database Connection
+
+```typescript
+import { env } from './src/server/common/utils'
+
+export default {
+  // Will throw error if DB_DSN is not set
+  dsn: env('DB_DSN'),
+}
+```
+
+```bash
+# .env
+DB_DSN=mysql://user:pass@localhost:3306/gulag
+```
+
+### Optional Redis with Fallback
+
+```typescript
+import { safeEnv } from './src/server/common/utils'
+
+export default {
+  // Falls back to localhost if not set
+  redisURL: safeEnv('REDIS_URL') ?? 'redis://localhost',
+}
+```
+
+```bash
+# .env
+# Uncomment to override default
+# REDIS_URL=redis://redis.example.com:6379
+```
+
+### Multiple Fallback Levels
+
+```typescript
+import { safeEnv } from './src/server/common/utils'
+
+export default {
+  apiUrl: safeEnv('API_URL') ?? safeEnv('FALLBACK_API_URL') ?? 'http://localhost:3000',
+}
+```
+
+## Backend Adapter Requirements
+
+<Tabs>
+  <Tab title="bancho.py">
+    **Required:**
+    - `DB_DSN` - MySQL database connection
+
+    **Optional:**
+    - `REDIS_URL` - Redis connection (recommended for production)
+
+    ```bash
+    # .env for bancho.py
+    DB_DSN=mysql://username:password@localhost:3306/database
+    REDIS_URL=redis://localhost
+    ```
+  </Tab>
+  <Tab title="ppy.sb@bancho.py">
+    **Required:**
+    - `DB_DSN` - MySQL database connection
+
+    **Optional:**
+    - `REDIS_URL` - Redis connection (recommended for production)
+
+    ```bash
+    # .env for ppy.sb@bancho.py
+    DB_DSN=mysql://username:password@localhost:3306/database
+    REDIS_URL=redis://localhost
+    ```
+  </Tab>
+</Tabs>
+
+## Environment-Specific Configuration
+
+### Development
+
+```bash
+# .env.development
+DB_DSN=mysql://dev:dev@localhost:3306/gulag_dev
+REDIS_URL=redis://localhost:6379
+NUXT_PUBLIC_BASE_URL=localhost:3000
+```
+
+### Production
+
+```bash
+# .env.production
+DB_DSN=mysql://prod_user:secure_password@db.example.com:3306/gulag_prod
+REDIS_URL=redis://:redis_password@redis.example.com:6379
+NUXT_PUBLIC_BASE_URL=ppy.sb
+HOST=127.0.0.1
+```
+
+<Warning>
+  Use strong, unique passwords in production environments.
+</Warning>
+
+## Best Practices
+
+<Steps>
+  <Step title="Never commit secrets">
+    Ensure `.env` is in your `.gitignore` file:
+    
+    ```bash
+    # .gitignore
+    .env
+    .env.local
+    .env.*.local
+    ```
+  </Step>
+
+  <Step title="Use env() for required values">
+    Required configuration should use `env()` to fail fast:
+    
+    ```typescript
+    dsn: env('DB_DSN'),  // App won't start without this
+    ```
+  </Step>
+
+  <Step title="Provide sensible defaults">
+    Optional configuration should have defaults using `safeEnv()`:
+    
+    ```typescript
+    redisURL: safeEnv('REDIS_URL') ?? 'redis://localhost',
+    ```
+  </Step>
+
+  <Step title="Document your variables">
+    Keep `.env.example` updated with all required variables:
+    
+    ```bash
+    # Database (required)
+    DB_DSN=mysql://username:password@localhost:3306/database
+    
+    # Redis (optional, defaults to localhost)
+    # REDIS_URL=redis://localhost
+    ```
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### "env validation error"
+
+If you see this error, a required environment variable is missing or invalid:
+
+```bash
+env validation error:
+DB_DSN is required
+```
+
+**Solution:** Check that all required variables are set in your `.env` file.
+
+### Variables not loading
+
+1. Ensure `.env` is in the project root directory
+2. Restart the development server after changing `.env`
+3. Check for typos in variable names (they're case-sensitive)
+
+### Connection refused errors
+
+If database or Redis connections fail:
+
+1. Verify the service is running: `mysql` or `redis-cli`
+2. Check the connection string format
+3. Ensure firewall rules allow connections
+4. Test credentials manually
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backend Configuration" icon="server" href="/configuration/backend">
+    Use environment variables in backend config
+  </Card>
+  <Card title="UI Configuration" icon="palette" href="/configuration/ui">
+    Configure UI settings and branding
+  </Card>
+</CardGroup>

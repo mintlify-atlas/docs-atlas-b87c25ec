@@ -1,0 +1,441 @@
+---
+title: Component Development
+description: Learn about Guccho's component architecture and how to create new components
+---
+
+Guccho uses Vue 3 components with TypeScript and follows a structured organization pattern. This guide covers the component architecture and best practices.
+
+## Component Organization
+
+Components in Guccho are organized into logical directories under `src/components/`:
+
+```
+src/components/
+├── T/                  # UI primitives and base components
+├── app/                # Application-level components
+├── content/            # Content management components
+├── userpage/           # User profile page components
+├── leaderboard/        # Leaderboard-specific components
+├── register/           # Registration flow components
+├── header/             # Header and navigation components
+├── fetch/              # Data fetching components
+└── global/             # Globally available components
+```
+
+### Component Categories
+
+#### T Components (UI Primitives)
+
+The `T/` directory contains reusable UI primitives and base components:
+
+- `button.vue` - Base button component with variants
+- `modal.vue` - Modal dialogs
+- `tabs.vue` / `tab.vue` - Tab navigation
+- `single-select.vue` / `multi-select.vue` - Select inputs
+- `combo-box.vue` - Combobox component
+- `nuxt-link-button.vue` - Button-styled links
+
+These components are designed to be:
+- **Reusable** across the application
+- **Customizable** with props and slots
+- **Type-safe** with TypeScript definitions
+
+#### App Components
+
+The `app/` directory contains application-level components:
+
+- `footer.vue` - Application footer
+- `mode-switcher.vue` - Theme/mode switcher
+- `depends-feature.vue` - Feature flag wrapper
+- `dynamic-settings.vue` - Settings management
+- `experience.vue` - Experience display
+- `nav/` - Navigation components
+- `score/` - Score display components
+- `chat/` - Chat functionality
+
+#### Feature-Specific Components
+
+Other directories contain components specific to particular features:
+
+- **userpage/** - Profile page components (statistics, scores, rankings)
+- **leaderboard/** - Leaderboard display components
+- **content/** - Rich text editor and content management
+- **register/** - User registration flow
+
+## Creating Components
+
+### Component Structure
+
+Guccho components follow this standard structure:
+
+```vue
+<script setup lang="ts">
+import type { YourType } from '~/def/your-module'
+
+const props = defineProps<{
+  propName: string
+  optionalProp?: number
+}>()
+
+const emit = defineEmits<{
+  eventName: [payload: YourType]
+}>()
+
+// Component logic
+</script>
+
+<template>
+  <!-- Template markup -->
+</template>
+
+<style scoped>
+/* Component-specific styles */
+</style>
+```
+
+### TypeScript Integration
+
+All components must use TypeScript with proper type definitions:
+
+<CodeGroup>
+```vue Basic Props
+<script setup lang="ts">
+const props = defineProps<{
+  variant?: string
+  size?: string
+  loading?: boolean
+}>()
+</script>
+```
+
+```vue Complex Props
+<script setup lang="ts">
+import type { Feature } from '~/def/features'
+import type { IconLink, UIConfig } from '~/def/config'
+
+const props = defineProps<{
+  feature: Feature
+  config: UIConfig
+  links?: readonly IconLink[]
+}>()
+</script>
+```
+
+```vue With Emits
+<script setup lang="ts">
+interface SelectOption {
+  value: string
+  label: string
+}
+
+const props = defineProps<{
+  options: SelectOption[]
+  modelValue: string
+}>()
+
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+}>()
+</script>
+```
+</CodeGroup>
+
+### Example: Button Component
+
+Here's the actual button component from Guccho:
+
+```vue src/components/T/button.vue
+<script setup lang="ts">
+const props = defineProps<{
+  variant?: string
+  size?: string
+  loading?: boolean
+}>()
+</script>
+
+<template>
+  <button
+    class="btn"
+    :class="[
+      props.variant && `btn-${props.variant}`,
+      props.size && `btn-${props.size}`,
+    ]"
+  >
+    <slot />
+    <span 
+      v-if="props.loading" 
+      :class="[
+        props.loading && 'loading', 
+        props.size && `loading-${size}`, 
+        variant && `text-${variant}`
+      ]" 
+    />
+  </button>
+</template>
+```
+
+Usage:
+
+```vue
+<T-button variant="primary" size="lg" :loading="isSubmitting">
+  Submit Form
+</T-button>
+```
+
+### Example: Feature-Dependent Component
+
+The `depends-feature.vue` component shows conditional rendering based on server features:
+
+```vue src/components/app/depends-feature.vue
+<script setup lang="ts">
+import type { Feature } from '~/def/features'
+
+defineProps<{
+  feature: Feature
+}>()
+</script>
+
+<template>
+  <template v-if="isServerFeatureSupported(feature)">
+    <slot />
+  </template>
+  <template v-else>
+    <slot name="unsupported" />
+  </template>
+</template>
+```
+
+Usage:
+
+```vue
+<app-depends-feature feature="chat">
+  <chat-interface />
+  <template #unsupported>
+    <p>Chat is not available on this server</p>
+  </template>
+</app-depends-feature>
+```
+
+## Naming Conventions
+
+### File Names
+
+- Use **kebab-case** for file names: `user-profile.vue`, `score-list-item.vue`
+- Use descriptive names that indicate the component's purpose
+- Client-only components should use the `.client.vue` suffix
+
+### Component Names
+
+- Single-word component names are allowed (non-standard for Vue 3)
+- Use PascalCase when referencing in templates: `<TButton />`, `<AppFooter />`
+- Prefix components with their directory name for clarity
+
+### Directory Structure
+
+When creating related components:
+
+```
+components/
+└── feature-name/
+    ├── index.vue          # Main component
+    ├── item.vue           # Sub-component
+    ├── modal.vue          # Feature modal
+    └── types.ts           # Shared types
+```
+
+## Component Patterns
+
+### Slots and Composition
+
+Use slots for flexible component composition:
+
+```vue
+<template>
+  <div class="card">
+    <div v-if="$slots.header" class="card-header">
+      <slot name="header" />
+    </div>
+    
+    <div class="card-body">
+      <slot />  <!-- Default slot -->
+    </div>
+    
+    <div v-if="$slots.footer" class="card-footer">
+      <slot name="footer" />
+    </div>
+  </div>
+</template>
+```
+
+### Composables Integration
+
+Leverage Vue composables for reusable logic:
+
+```vue
+<script setup lang="ts">
+const runtime = useRuntimeConfig()
+const { t } = useI18n()
+const router = useRouter()
+
+// Your component logic
+</script>
+```
+
+### Runtime Configuration
+
+Access runtime configuration in components:
+
+```vue
+<script setup lang="ts">
+import type { UIConfig } from '~/def/config'
+
+const runtime = useRuntimeConfig()
+const { brand, footerLink } = runtime.public as unknown as UIConfig
+</script>
+
+<template>
+  <div>
+    <icon v-if="brand" :name="brand.icon" />
+  </div>
+</template>
+```
+
+## Styling Components
+
+### Tailwind CSS
+
+Guccho uses Tailwind CSS for styling. Use utility classes in templates:
+
+```vue
+<template>
+  <div class="flex items-center justify-between p-4 rounded-lg shadow-md">
+    <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
+      {{ title }}
+    </h2>
+  </div>
+</template>
+```
+
+### DaisyUI Components
+
+Guccho includes DaisyUI for pre-built component styles:
+
+```vue
+<template>
+  <button class="btn btn-primary btn-lg">
+    Click Me
+  </button>
+</template>
+```
+
+### Scoped Styles
+
+For component-specific styles, use scoped CSS:
+
+```vue
+<style scoped>
+.custom-component {
+  /* Component-specific styles */
+}
+</style>
+```
+
+### SCSS Support
+
+Guccho supports SCSS with the modern compiler:
+
+```vue
+<style lang="scss" scoped>
+.component {
+  &__header {
+    font-weight: bold;
+  }
+  
+  &__content {
+    padding: 1rem;
+  }
+}
+</style>
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Type Safety" icon="shield-check">
+    Always define props and emits with TypeScript types. Never use `any` or skip type definitions.
+  </Card>
+  
+  <Card title="Single Responsibility" icon="cube">
+    Each component should do one thing well. Break down complex components into smaller, reusable pieces.
+  </Card>
+  
+  <Card title="Composables First" icon="puzzle-piece">
+    Extract reusable logic into composables rather than duplicating code across components.
+  </Card>
+  
+  <Card title="Prop Validation" icon="check-circle">
+    Use TypeScript interfaces for complex props and provide sensible defaults for optional props.
+  </Card>
+</CardGroup>
+
+### Performance Considerations
+
+- Use `v-if` for conditional rendering when components are expensive
+- Use `v-show` for frequent toggling of simple elements
+- Lazy load heavy components with dynamic imports:
+  ```ts
+  const HeavyComponent = defineAsyncComponent(
+    () => import('~/components/heavy-component.vue')
+  )
+  ```
+
+### Accessibility
+
+Ensure components are accessible:
+
+- Use semantic HTML elements
+- Include ARIA labels where needed
+- Ensure keyboard navigation works
+- Test with screen readers
+
+## Testing Components
+
+Before committing new components:
+
+<Steps>
+  <Step title="Type check">
+    Run `pnpm typecheck` to ensure no TypeScript errors
+  </Step>
+  
+  <Step title="Lint">
+    Run `pnpm lint` to check code style
+  </Step>
+  
+  <Step title="Visual testing">
+    Test the component in the browser:
+    - Desktop view
+    - Mobile view
+    - Dark mode
+    - Light mode
+  </Step>
+  
+  <Step title="Integration testing">
+    Verify the component works in its intended context within the application
+  </Step>
+</Steps>
+
+## Component Library Reference
+
+For a complete list of available components, explore the `src/components/` directory in the source code. Each component is self-documenting through TypeScript definitions and can serve as a reference for creating new components.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Contributing Guide" icon="hand-wave" href="/development/contributing">
+    Learn about the full development workflow
+  </Card>
+  
+  <Card title="Architecture" icon="diagram-project" href="/development/architecture">
+    Understand the overall application architecture
+  </Card>
+</CardGroup>

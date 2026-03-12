@@ -1,0 +1,257 @@
+---
+title: "Leaderboards"
+description: "Global rankings, mode-specific leaderboards, and ranking systems"
+---
+
+Guccho's leaderboard system provides comprehensive player rankings across multiple game modes, rulesets, and scoring systems.
+
+## Overview
+
+The leaderboard displays the top players on your server with detailed statistics and filtering options.
+
+<CardGroup cols={2}>
+  <Card title="Multiple Ranking Systems" icon="trophy">
+    PPv1, PPv2, RankedScore, and TotalScore rankings
+  </Card>
+  <Card title="Country Filtering" icon="flag">
+    Filter leaderboards by player country
+  </Card>
+  <Card title="Mode Support" icon="gamepad">
+    Separate leaderboards for each game mode
+  </Card>
+  <Card title="Pagination" icon="list">
+    Navigate through pages of rankings
+  </Card>
+</CardGroup>
+
+## Ranking Systems
+
+Guccho supports multiple ranking systems that measure player skill differently:
+
+### PPv2 (Performance Points v2)
+
+The modern performance-based ranking system:
+
+- Calculates skill based on score quality and difficulty
+- Weighs recent top plays more heavily
+- Most commonly used ranking system
+- Provides the most accurate skill measurement
+
+<Info>
+  PPv2 is the default ranking system used by most servers.
+</Info>
+
+### PPv1 (Performance Points v1)
+
+Legacy performance point system:
+
+- Original PP calculation algorithm
+- May be used for older servers or specific modes
+- Generally less accurate than PPv2
+
+### RankedScore
+
+Ranking based on total score from ranked beatmaps:
+
+- Only counts scores on ranked/approved beatmaps
+- Ignores loved and unranked maps
+- Traditional ranking method
+- Favors players with more ranked map plays
+
+### TotalScore
+
+Ranking based on all scores:
+
+- Counts scores from all beatmap types
+- Includes loved, unranked, and ranked maps
+- Pure score accumulation
+- No difficulty weighting
+
+## Leaderboard Features
+
+### Mode and Ruleset Selection
+
+The leaderboard supports all osu! game modes:
+
+```typescript
+// Available modes
+{
+  mode: 'osu' | 'taiko' | 'catch' | 'mania',
+  ruleset: string // Server-specific rulesets
+}
+```
+
+Each mode has its own independent rankings and statistics.
+
+### Country Filtering
+
+Filter the leaderboard by country:
+
+<Steps>
+  <Step title="Open Country Dropdown">
+    Click the country filter button in the leaderboard header.
+  </Step>
+  <Step title="Search Countries">
+    Use the search bar to quickly find a specific country.
+  </Step>
+  <Step title="Select Country">
+    Click a country to filter the leaderboard.
+  </Step>
+  <Step title="Clear Filter">
+    Click the clear button (X) to show all countries again.
+  </Step>
+</Steps>
+
+<Tip>
+  The country list only shows countries with active players in the selected mode.
+</Tip>
+
+### Leaderboard Columns
+
+The leaderboard table displays:
+
+| Column | Description |
+|--------|-------------|
+| **Rank** | Player's position in the current ranking system |
+| **Flag** | Player's country flag (clickable to filter) |
+| **Player** | Username with link to profile page |
+| **Performance/Score** | PP or score value depending on ranking system |
+| **Accuracy** | Overall accuracy percentage |
+| **Play Count** | Total number of plays |
+
+### Pagination
+
+Navigate through pages of rankings:
+
+- Each page shows 20 players
+- Up to 5 pages available (top 100 players)
+- Click page numbers to jump to specific pages
+- URL updates with current page for sharing
+
+<Note>
+  The leaderboard is limited to the top 100 players (5 pages) for performance reasons.
+</Note>
+
+## URL Parameters
+
+Leaderboards support URL parameters for direct linking:
+
+```bash
+/leaderboard/:mode?ruleset=:ruleset&ranking=:system&page=:page&country=:country
+```
+
+**Parameters:**
+- `mode`: Game mode (osu, taiko, catch, mania)
+- `ruleset`: Ruleset identifier
+- `ranking`: Ranking system (PPv2, PPv1, RankedScore, TotalScore)
+- `page`: Page number (1-5)
+- `country`: Two-letter country code
+
+**Example:**
+```bash
+/leaderboard/osu?ruleset=std&ranking=PPv2&page=1&country=US
+```
+
+## Real-time Updates
+
+The leaderboard updates dynamically:
+
+- Loading states shown during data fetching
+- Smooth transitions between pages and filters
+- No full page reloads required
+- History state managed for browser back/forward navigation
+
+## Implementation Details
+
+<Accordion title="Page Structure">
+  The leaderboard is implemented in `src/pages/leaderboard/[[mode]].vue` with optional mode parameter for cleaner URLs.
+</Accordion>
+
+<Accordion title="Data Fetching">
+  ```typescript
+  // Leaderboard data query
+  {
+    mode: ActiveMode,
+    ruleset: ActiveRuleset,
+    rankingSystem: LeaderboardRankingSystem,
+    page: number,        // 0-based index
+    pageSize: number,    // 20 per page
+    country?: CountryCode // Optional filter
+  }
+  ```
+</Accordion>
+
+<Accordion title="Country Dropdown">
+  The country list is lazy-loaded when first opened to improve initial page load performance. Countries without players in the selected mode are automatically filtered out.
+</Accordion>
+
+## Empty State
+
+When no players have scores in a mode:
+
+<Frame>
+  ```
+  No one played this mode yet.
+  Wanna be the first one? Go for it.
+  ```
+</Frame>
+
+This encourages new players to be the first to set scores.
+
+## Table Interactions
+
+### Clicking Player Names
+
+Click any player's name to navigate to their profile page.
+
+### Clicking Flags
+
+Click a flag to filter the leaderboard by that country. The flag column header changes to show "Clear" when a filter is active.
+
+### Hover Effects
+
+Table rows highlight on hover for better readability and to indicate clickability.
+
+## Mobile Responsiveness
+
+The leaderboard is fully responsive:
+
+- Table scrolls horizontally on small screens
+- Condensed table size on mobile devices
+- Touch-friendly navigation buttons
+- Optimized column widths
+
+## Accessibility
+
+- Semantic table markup with proper headers
+- ARIA labels for navigation elements
+- Keyboard navigation support
+- Screen reader friendly
+
+## Performance Optimizations
+
+<CardGroup cols={2}>
+  <Card title="Server-Side Rendering" icon="server">
+    Initial leaderboard data is rendered on the server for fast first paint.
+  </Card>
+  <Card title="Lazy Loading" icon="spinner">
+    Country list loaded on-demand to reduce initial payload.
+  </Card>
+  <Card title="Optimistic Updates" icon="bolt">
+    UI updates immediately with loading states during data fetching.
+  </Card>
+  <Card title="URL State" icon="link">
+    All filter states persisted in URL for sharing and bookmarking.
+  </Card>
+</CardGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="User Pages" icon="user" href="/features/user-pages">
+    View detailed player profiles and statistics
+  </Card>
+  <Card title="Clans" icon="users" href="/features/clans">
+    View clan leaderboards and rankings
+  </Card>
+</CardGroup>

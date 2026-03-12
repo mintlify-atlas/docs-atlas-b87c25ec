@@ -1,0 +1,406 @@
+---
+title: Articles
+description: Create and manage blog posts and content pages with the built-in article system
+---
+
+Guccho includes a powerful article management system that allows you to create, edit, and manage blog posts, announcements, and custom content pages. Articles support rich text editing, dynamic content, and fine-grained access control.
+
+## Overview
+
+The article system provides:
+
+- **Rich Text Editor**: Create content with a TipTap-based WYSIWYG editor
+- **Dynamic Content**: Use template variables that update automatically
+- **Access Control**: Set read and write permissions per article
+- **Localization**: Support for multiple language versions
+- **Version Control**: Automatic versioning and migration of article formats
+- **Import/Export**: Backup and transfer articles between instances
+
+## Article Structure
+
+Articles are stored in the `articles/` directory as binary BSON files with the `.gal` extension (Guccho Article Localized).
+
+### File Organization
+
+```
+articles/
+├── fallbacks/              # System fallback pages
+│   ├── 403.gal/
+│   ├── 404.gal/
+│   │   ├── en-GB          # English version
+│   │   └── zh-CN          # Chinese version
+│   ├── registered         # New user registration page
+│   └── templates          # Template system documentation
+└── your-article.gal/
+    ├── en-GB              # English version
+    └── ja-JP              # Japanese version
+```
+
+### Localized Articles
+
+Articles can have different versions for different languages. Create localized versions by adding subdirectories with language codes:
+
+```
+my-announcement.gal/
+├── en-GB
+├── zh-CN
+├── ja-JP
+└── fr-FR
+```
+
+The system automatically selects the appropriate version based on the user's language preference, falling back to English if the requested language is unavailable.
+
+## Viewing Articles
+
+Articles are displayed at `/article/[slug]` where `slug` is the article path.
+
+**Example**: An article at `articles/announcements/welcome.gal` is accessible at:
+```
+/article/announcements/welcome
+```
+
+### Article Display Component
+
+Articles are rendered using the `content-render` component:
+
+```vue
+<template>
+  <section class="container mx-auto with-editor relative">
+    <content-render v-bind="content" />
+    <button v-if="content?.access.write" @click="navigateTo({ name: 'article-edit', query: { slug: id } })">
+      Edit
+    </button>
+  </section>
+</template>
+```
+
+From `src/pages/article/[...id].vue:43-50`
+
+The render component automatically:
+- Processes dynamic templates
+- Applies syntax highlighting to code blocks
+- Handles localization
+- Enforces access control
+
+## Creating and Editing Articles
+
+Only **Staff** members and above can create and edit articles.
+
+### Accessing the Editor
+
+Navigate to `/article/edit` to access the article editor interface.
+
+### Editor Interface
+
+The editor provides several key features:
+
+#### 1. Article Selection
+
+The left sidebar displays a tree view of all available articles. Click any article to load it for editing.
+
+#### 2. Article Slug
+
+Enter the article slug (path) in the text field:
+
+```vue
+<input v-model="article.slug" type="text" class="input" />
+<button @click="update()">Load</button>
+<button @click="create()">New</button>
+```
+
+From `src/pages/article/edit.client.vue:228-238`
+
+#### 3. Import/Export
+
+**Export**: Download the article as a `.article` file for backup or transfer:
+```typescript
+function exportArticle() {
+  const file = new File(
+    [stringify(article.value)],
+    `${article.value.slug || 'unnamed'}.article`,
+    { type: 'application/text' }
+  )
+  const url = URL.createObjectURL(file)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${article.value.slug || 'unnamed'}.article`
+  a.click()
+}
+```
+
+From `src/pages/article/edit.client.vue:67-80`
+
+**Import**: Load a previously exported `.article` file to restore or copy content.
+
+#### 4. Content Settings
+
+**Dynamic Content**: Enable this checkbox to use template variables that update automatically based on server configuration.
+
+**Read Access**: Control who can view the article:
+- `public` - Anyone can view
+- `staff` - Staff members only
+- `moderator` - Moderators and above
+- `beatmapNominator` - Beatmap nominators and above
+
+**Write Access**: Control who can edit the article:
+- `staff` - Staff members
+- `moderator` - Moderators
+- `beatmapNominator` - Beatmap nominators
+
+```vue
+<t-multi-select 
+  v-model="article.privilege.read" 
+  :options="options(readPrivileges)" 
+/>
+<t-multi-select 
+  v-model="article.privilege.write" 
+  :options="options(privileges)" 
+/>
+```
+
+From `src/pages/article/edit.client.vue:272-278`
+
+#### 5. Rich Text Editor
+
+The editor toolbar provides:
+
+- **Text Formatting**: Bold, italic, underline, strikethrough, code
+- **Headings**: H1, H2, H3, H4, H5, H6
+- **Lists**: Bullet lists, numbered lists, task lists
+- **Alignment**: Left, center, right, justify
+- **Links**: Insert hyperlinks
+- **Images**: Upload or link images
+- **Code Blocks**: Syntax-highlighted code blocks
+- **Tables**: Create and edit tables
+- **Variables**: Insert dynamic template variables
+- **Horizontal Rules**: Add dividers
+
+### Saving Articles
+
+Click the **Save** button to save changes. The system will:
+
+1. Update the article metadata (last modified time and user)
+2. If not dynamic, pre-render the HTML for faster loading
+3. Save the BSON-serialized content to disk
+4. Update related localized versions with the same content structure
+
+```typescript
+async function save() {
+  if (!article.value.slug || !article.value.json) {
+    return
+  }
+  await app.$client.article.editor.save.mutate(
+    article.value as Required<typeof article['value']>
+  )
+  await refreshTree()
+}
+```
+
+From `src/pages/article/edit.client.vue:122-133`
+
+### Deleting Articles
+
+Click the **Delete** button to permanently remove an article. A confirmation dialog will appear.
+
+**Note**: Fallback articles (403, 404, etc.) cannot be deleted to ensure system stability.
+
+## Dynamic Content and Templates
+
+Dynamic articles can include template variables that automatically update based on server configuration.
+
+### Enabling Dynamic Content
+
+Check the "Dynamic Content" checkbox in the editor. Dynamic articles:
+- Render variables at request time instead of save time
+- Display current server information
+- Automatically reflect configuration changes
+
+### Using Variables
+
+1. Type `{{` in the editor to see available variables
+2. Select a variable from the dropdown
+3. Optionally set a custom fallback value by clicking the variable chip
+
+### Available Variables
+
+**Server Information**:
+- `domain` - Server domain name
+- `server.name` - Server title/name
+
+**Game Modes**:
+- `mode.osu` - osu!standard display name
+- `mode.taiko` - Taiko display name
+- `mode.fruits` - Catch display name
+- `mode.mania` - Mania display name
+
+**Rulesets**:
+- `ruleset.standard` - Standard ruleset name
+- `ruleset.relax` - Relax ruleset name
+- `ruleset.autopilot` - Autopilot ruleset name
+
+**Ranking Systems**:
+- `rank.ppv1` - PPv1 ranking system name
+- `rank.ppv2` - PPv2 ranking system name
+- `rank.rankedScore` - Ranked score system name
+- `rank.totalScore` - Total score system name
+
+### Variable Fallbacks
+
+Variables display with a yellowish tint when only using default fallbacks. You can set custom fallbacks by:
+
+1. Clicking the variable chip
+2. Entering your fallback text
+3. Clicking Save
+
+Custom fallbacks take priority over default values and ensure content stability across updates.
+
+## Access Control
+
+Articles include built-in access control for both reading and editing.
+
+### Permission Levels
+
+**Read Access**:
+- `public` (Scope.Public) - Available to all visitors
+- Role-based: `staff`, `moderator`, `beatmapNominator`
+
+**Write Access**:
+- Role-based only: `staff`, `moderator`, `beatmapNominator`
+- Article owners always have write access
+- Admins and owners can edit any article
+
+### Access Check
+
+```typescript
+static async checkPrivilege(
+  access: keyof ArticleProvider.Meta['privilege'],
+  content: ArticleProvider.Meta,
+  user?: { id: unknown; roles: UserRole[] },
+) {
+  const privRequired = content.privilege[access]
+  return (
+    (access === 'read' && content.privilege?.read.includes(ArticleProvider.ReadAccess.Public))
+    || (user && ((user.id === content.owner) || (privRequired).some(priv => user.roles.includes(priv as any))))
+  ) || false
+}
+```
+
+From `src/server/backend/$base/server/article/index.ts:278-289`
+
+### Edit Button Visibility
+
+The edit button only appears if the user has write access:
+
+```vue
+<button v-if="content?.access.write" class="btn" @click="navigateTo({ name: 'article-edit', query: { slug: id } })">
+  Edit
+</button>
+```
+
+From `src/pages/article/[...id].vue:46-48`
+
+## Article Metadata
+
+Each article stores metadata including:
+
+```typescript
+interface Meta {
+  privilege: {
+    read: TReadAccess[]    // Who can read
+    write: TWriteAccess[]  // Who can edit
+  }
+  owner: OwnerId           // Creator user ID
+  created: [unknown, Date] // [user, timestamp]
+  lastUpdated: [unknown, Date] // [user, timestamp]
+}
+```
+
+Metadata is automatically managed when creating and saving articles.
+
+## Technical Details
+
+### Storage Format
+
+Articles are stored as BSON (Binary JSON) for efficient serialization:
+
+```typescript
+static serialize(content: ArticleProvider.Core) {
+  return BSON.serialize(content)
+}
+
+static deserialize(data: Uint8Array) {
+  return BSON.deserialize(data)
+}
+```
+
+From `src/server/backend/$base/server/article/index.ts:110-116`
+
+### Content Structure
+
+```typescript
+interface StaticContent {
+  dynamic: false
+  json: JSONContent    // TipTap JSON format
+  html: string        // Pre-rendered HTML
+}
+
+interface DynamicContent {
+  dynamic: true
+  json: JSONContent    // TipTap JSON format
+  // html rendered on request
+}
+```
+
+### Version Migration
+
+The article system includes automatic version migration. When loading older articles, the system:
+
+1. Detects the article version
+2. Applies migration pipeline if needed
+3. Logs the migration path
+4. Returns the updated content
+
+```typescript
+static validate(content: { v?: keyof typeof versions }, opt: ArticleProvider.ValidateOpt) {
+  if (content.v === undefined) {
+    content.v = v0.v
+  }
+  if (content.v === latest.v) {
+    return latest.parse(content)
+  }
+  const head = versions[content.v].parse(content)
+  const pipeline = createPipeline(compileGraph(paths), content.v, latest.v)
+  const route = hops(pipeline.path)
+  if (route?.length) {
+    logger.info({ message: `Updated Article to latest version: ${route.map(String).join(' -> ')}.` })
+  }
+  return latest.parse(pipeline.migrate(head))
+}
+```
+
+From `src/server/backend/$base/server/article/index.ts:118-144`
+
+## Configuration
+
+Configure the article storage location in your environment:
+
+```typescript
+// guccho.backend.config.ts
+export default {
+  article: {
+    location: resolve('articles') // Default: ./articles/
+  }
+}
+```
+
+From `src/server/backend/$base/env.ts:14-15`
+
+## Best Practices
+
+1. **Use Dynamic Content for Server Info**: Enable dynamic content for pages that reference server settings
+2. **Set Custom Fallbacks**: Provide custom fallbacks for important variables to ensure stability
+3. **Export Before Major Changes**: Export articles before making significant edits
+4. **Use Appropriate Access Levels**: Set read access to `public` for announcements, restrict sensitive content
+5. **Organize with Folders**: Use subdirectories to organize articles by category
+6. **Provide Multiple Languages**: Create localized versions for international communities
+7. **Test Dynamic Variables**: Preview dynamic articles in different languages and configurations

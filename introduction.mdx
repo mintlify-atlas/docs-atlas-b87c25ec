@@ -1,0 +1,53 @@
+---
+title: Introduction
+description: Learn about Guccho, a modern web frontend for private osu! servers
+---
+
+## What is Guccho?
+
+Guccho is a web-based service designed for interacting with private osu! servers, focusing on compatibility and ease of use. Built with Nuxt 3, Guccho provides a modern, performant frontend that seamlessly integrates with popular private osu! server implementations.
+
+## Supported Backends
+
+Guccho currently supports the following private osu! server backends:
+
+<CardGroup cols={2}>
+  <Card title="bancho.py" icon="server" iconType="duotone">
+    Also known as **gulag**, a Python-based private osu! server implementation
+  </Card>
+  <Card title="ppy.sb" icon="database" iconType="duotone">
+    An extended implementation based on bancho.py with additional features
+  </Card>
+</CardGroup>
+
+## Key Features
+
+- **Modern Stack**: Built with Nuxt 3 and Vue 3 for optimal performance
+- **Flexible Configuration**: Separate UI and backend configuration files
+- **Multiple Data Sources**: Support for Redis and database-based leaderboards
+- **Customizable**: Extensive theming and localization options
+- **Production Ready**: Optimized build process for deployment
+
+## Architecture Overview
+
+Guccho follows a layered architecture:
+
+- **Client Layer**: Vue 3 components with tRPC client for type-safe API calls
+- **Server Layer**: tRPC server with provider-based backend abstraction
+- **Data Layer**: MySQL for persistent storage, Redis for sessions and leaderboards
+- **Backend Adapters**: Pluggable adapters for different server implementations
+
+<Note>
+Guccho uses a provider-based architecture that allows for easy extension to support additional private server implementations.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install Guccho and set up your development environment
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get Guccho running in minutes with our quick start guide
+  </Card>
+</CardGroup>

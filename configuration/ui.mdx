@@ -1,0 +1,384 @@
+---
+title: UI Configuration
+description: Customize Guccho's appearance, branding, footer links, and leaderboard display settings
+---
+
+The UI configuration file (`guccho.ui.config.ts`) controls the visual appearance and branding of your Guccho frontend.
+
+## Creating Your Configuration
+
+Copy the example configuration file and customize it:
+
+```bash
+cp guccho.ui.config.example.ts guccho.ui.config.ts
+```
+
+<Warning>
+  Use an editor with TypeScript support for better error detection and autocomplete.
+</Warning>
+
+## Configuration Structure
+
+Your configuration file should export a default object that satisfies the `UIConfig` type:
+
+```typescript
+import { type UIConfig } from './src/def/config.d'
+import { Lang, Rank } from './src/def'
+
+export default {
+  // your configuration
+} satisfies UIConfig
+```
+
+## Server Identity
+
+<ParamField path="baseUrl" type="string" required>
+  Base domain of your server. Use the root domain without subdomains.
+
+  **Example:** If your server is at `c.ppy.sh`, use `ppy.sh`
+
+  ```typescript
+  baseUrl: 'dev.ppy.sb'
+  ```
+</ParamField>
+
+<ParamField path="legacyOption.name" type="string">
+  The name of your server. This is a simple way to set your server name.
+
+  ```typescript
+  legacyOption: {
+    name: 'Guccho',
+  }
+  ```
+
+  <Note>
+    For more advanced localization, use the i18n configuration to provide different names in multiple languages.
+  </Note>
+</ParamField>
+
+## Branding
+
+<ParamField path="brand" type="object">
+  Configure the branding icon displayed in the top and bottom left corners.
+
+  ```typescript
+  brand: {
+    icon: 'ion:paw',
+    iconClass: 'w-8 h-4',
+  }
+  ```
+
+  <Expandable title="Brand Fields">
+    <ParamField path="brand.icon" type="string">
+      Icon identifier. Guccho uses Iconify for icons, so you can use any icon from the [Iconify icon sets](https://icon-sets.iconify.design/).
+
+      **Format:** `collection:icon-name`
+
+      **Examples:**
+      - `ion:paw` - Paw icon from Ionicons
+      - `mdi:music` - Music icon from Material Design Icons
+      - `fa:heart` - Heart icon from Font Awesome
+
+      ```typescript
+      icon: 'ion:paw'
+      ```
+    </ParamField>
+
+    <ParamField path="brand.iconClass" type="string | string[] | Record<string, string>">
+      CSS classes to apply to the icon for sizing and styling.
+
+      ```typescript
+      iconClass: 'w-8 h-4'  // Tailwind classes
+      ```
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<Tip>
+  Browse [Iconify](https://icon-sets.iconify.design/) to find the perfect icon for your server's brand.
+</Tip>
+
+## Footer Links
+
+<ParamField path="iconLinks" type="IconLink[]">
+  Small icon links displayed in the footer.
+
+  ```typescript
+  iconLinks: [
+    {
+      icon: 'tabler:brand-nuxt',
+      link: 'https://nuxt.com',
+      name: 'nuxt'
+    }
+  ]
+  ```
+
+  <Expandable title="IconLink Fields">
+    <ParamField path="icon" type="string" required>
+      Iconify icon identifier.
+    </ParamField>
+
+    <ParamField path="link" type="string" required>
+      URL to link to.
+    </ParamField>
+
+    <ParamField path="name" type="string">
+      Internal name for the link.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="footerLink" type="object">
+  Organized footer links grouped by category.
+
+  Guccho provides predefined keys with built-in translations:
+  - `about` - Links related to your server
+  - `resources` - External resources and tools
+
+  ```typescript
+  footerLink: {
+    about: [
+      {
+        localeKey: 'footer.blog',
+        link: 'https://blog.ppy.sb',
+      }
+    ],
+    resources: [
+      {
+        localeKey: 'footer.nuxt',
+        link: 'https://nuxt.com',
+      }
+    ],
+  }
+  ```
+
+  <Expandable title="Adding Custom Sections">
+    You can add custom footer sections beyond `about` and `resources`:
+
+    ```typescript
+    footerLink: {
+      // Custom section
+      store: [
+        {
+          localeKey: 'footer.my-store',
+          link: 'https://store.example.com',
+        }
+      ],
+    },
+    i18n: {
+      messages: {
+        [Lang.enGB]: {
+          footer: {
+            store: 'Store',  // Section title
+            'my-store': 'My Store',  // Link text
+          },
+        },
+      },
+    }
+    ```
+
+    <Note>
+      Custom sections require you to provide translations in the `i18n` configuration.
+    </Note>
+  </Expandable>
+</ParamField>
+
+## Internationalization (i18n)
+
+<ParamField path="i18n.messages" type="Partial<Record<Lang, Record<string, any>>>">
+  Locale translations for customizing text in different languages.
+
+  ```typescript
+  i18n: {
+    messages: {
+      [Lang.enGB]: {
+        footer: {
+          blog: 'Blog',
+          nuxt: 'Nuxt',
+        },
+      },
+    },
+  }
+  ```
+
+  <Expandable title="Multi-Language Server Names">
+    Provide different server names for each language:
+
+    ```typescript
+    i18n: {
+      messages: {
+        [Lang.enGB]: {
+          server: {
+            name: 'ppy.sb',
+          },
+        },
+        [Lang.frFr]: {
+          server: {
+            name: 'ppŷ.śb',
+          },
+        },
+        [Lang.zhCN]: {
+          server: {
+            name: '偏偏要上班',
+          },
+        },
+      },
+    }
+    ```
+  </Expandable>
+</ParamField>
+
+<Note>
+  Supported languages are defined in `./src/def`. Contact the Guccho team if you want to contribute translations for additional languages.
+</Note>
+
+## Leaderboard Ranking Systems
+
+<ParamField path="leaderboardRankingSystem" type="Record<LeaderboardRankingSystem, RankConf>" required>
+  Configure how different ranking systems are displayed on user pages.
+
+  ```typescript
+  leaderboardRankingSystem: {
+    [Rank.PPv2]: {
+      userpage: {
+        show: 'tab',
+      },
+    },
+    [Rank.PPv1]: {
+      userpage: {
+        show: 'dropdown',
+      },
+    },
+    [Rank.RankedScore]: {
+      userpage: {
+        show: 'tab',
+      },
+    },
+    [Rank.TotalScore]: {
+      userpage: {
+        show: 'tab',
+      },
+    },
+  }
+  ```
+
+  <Expandable title="Display Options">
+    <ParamField path="userpage.show" type="'tab' | 'dropdown'">
+      How to display this ranking system on user pages.
+
+      **Options:**
+      - `tab` - Show as a prominent tab (for primary ranking systems)
+      - `dropdown` - Show in a dropdown menu (for secondary ranking systems)
+
+      ```typescript
+      [Rank.PPv2]: {
+        userpage: {
+          show: 'tab',  // Primary ranking system
+        },
+      },
+      [Rank.PPv1]: {
+        userpage: {
+          show: 'dropdown',  // Secondary ranking system
+        },
+      }
+      ```
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<Tip>
+  Use `tab` for your primary ranking systems (like PPv2 and Ranked Score) and `dropdown` for alternative or legacy ranking systems.
+</Tip>
+
+## Complete Example
+
+```typescript
+import { type UIConfig } from './src/def/config.d'
+import { Lang, Rank } from './src/def'
+
+export default {
+  // Server identity
+  legacyOption: {
+    name: 'Guccho',
+  },
+  baseUrl: 'dev.ppy.sb',
+
+  // Branding
+  brand: {
+    icon: 'ion:paw',
+    iconClass: 'w-8 h-4',
+  },
+
+  // Footer icon links
+  iconLinks: [
+    {
+      icon: 'tabler:brand-nuxt',
+      link: 'https://nuxt.com',
+      name: 'nuxt'
+    }
+  ],
+
+  // Footer link sections
+  footerLink: {
+    about: [
+      {
+        localeKey: 'footer.blog',
+        link: 'https://blog.ppy.sb',
+      }
+    ],
+    resources: [
+      {
+        localeKey: 'footer.nuxt',
+        link: 'https://nuxt.com',
+      }
+    ],
+  },
+
+  // Internationalization
+  i18n: {
+    messages: {
+      [Lang.enGB]: {
+        footer: {
+          blog: 'Blog',
+          nuxt: 'Nuxt',
+        },
+      },
+    },
+  },
+
+  // Leaderboard ranking systems
+  leaderboardRankingSystem: {
+    [Rank.PPv2]: {
+      userpage: {
+        show: 'tab',
+      },
+    },
+    [Rank.PPv1]: {
+      userpage: {
+        show: 'dropdown',
+      },
+    },
+    [Rank.RankedScore]: {
+      userpage: {
+        show: 'tab',
+      },
+    },
+    [Rank.TotalScore]: {
+      userpage: {
+        show: 'tab',
+      },
+    },
+  },
+} satisfies UIConfig
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backend Configuration" icon="server" href="/configuration/backend">
+    Configure database, Redis, and backend adapters
+  </Card>
+  <Card title="Environment Variables" icon="key" href="/configuration/environment">
+    Manage environment variables and secrets
+  </Card>
+</CardGroup>

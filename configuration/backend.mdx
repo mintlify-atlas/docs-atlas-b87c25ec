@@ -1,0 +1,355 @@
+---
+title: Backend Configuration
+description: Configure Guccho's backend settings, database connections, Redis, and API endpoints
+---
+
+The backend configuration file (`guccho.backend.config.ts`) controls how Guccho connects to your private osu! server, database, cache, and other backend services.
+
+## Creating Your Configuration
+
+Copy the example configuration file and customize it for your setup:
+
+```bash
+cp guccho.backend.config.example.ts guccho.backend.config.ts
+```
+
+<Warning>
+  Use an editor with TypeScript support for better error detection and autocomplete.
+</Warning>
+
+## Configuration Structure
+
+Your configuration file should export a default object that satisfies the `UserBackendConfig` type:
+
+```typescript
+import { resolve } from 'node:path'
+import { type UserBackendConfig } from './src/def/config'
+import { env, safeEnv } from './src/server/common/utils'
+
+export default {
+  // your configuration
+} satisfies UserBackendConfig
+```
+
+## Backend Adapters
+
+<ParamField path="use" type="string" required>
+  The backend adapter to use. This determines which private server implementation Guccho will interface with.
+
+  **Supported adapters:**
+  - `bancho.py` - For bancho.py (gulag) servers
+  - `ppy.sb@bancho.py` - For ppy.sb servers (extends bancho.py)
+
+  ```typescript
+  use: 'ppy.sb@bancho.py'
+  ```
+</ParamField>
+
+<Tabs>
+  <Tab title="bancho.py">
+    Basic configuration for bancho.py (gulag) servers:
+
+    ```typescript
+    export default {
+      use: 'bancho.py',
+      dsn: env('DB_DSN'),
+      redisURL: safeEnv('REDIS_URL') ?? 'redis://localhost',
+      sessionStore: 'redis',
+      leaderboardSource: 'database',
+      // ... other settings
+    } satisfies UserBackendConfig
+    ```
+
+    Requires:
+    - MySQL database connection
+    - Redis (optional, but recommended for sessions)
+    - Gulag API v1 endpoint
+  </Tab>
+  <Tab title="ppy.sb@bancho.py">
+    Configuration for ppy.sb servers (extends bancho.py with additional features):
+
+    ```typescript
+    export default {
+      use: 'ppy.sb@bancho.py',
+      dsn: env('DB_DSN'),
+      redisURL: safeEnv('REDIS_URL') ?? 'redis://localhost',
+      sessionStore: 'redis',
+      leaderboardSource: 'database',
+      api: {
+        v1: 'http://api.dev.ppy.sb/v1',
+        sb: 'http://api.dev.ppy.sb/sb',
+      },
+      // ... other settings
+    } satisfies UserBackendConfig
+    ```
+
+    Includes all bancho.py features plus:
+    - Additional database tables
+    - Extended API endpoints
+  </Tab>
+</Tabs>
+
+## Database Connection
+
+<ParamField path="dsn" type="string" required>
+  Database connection string (Data Source Name). This is a required field and should be loaded from environment variables.
+
+  **Format:** `mysql://username:password@host:port/database`
+
+  ```typescript
+  dsn: env('DB_DSN')
+  ```
+
+  Set in your `.env` file:
+  ```bash
+  DB_DSN=mysql://username:password@localhost:3306/database
+  ```
+</ParamField>
+
+<Note>
+  The `env()` function ensures this variable is set - Guccho will not start without it.
+</Note>
+
+## Redis Configuration
+
+<ParamField path="redisURL" type="string">
+  Redis connection URL. Used for session storage and leaderboard caching.
+
+  **Default:** `redis://localhost`
+
+  ```typescript
+  redisURL: safeEnv('REDIS_URL') ?? 'redis://localhost'
+  ```
+
+  Set in your `.env` file:
+  ```bash
+  REDIS_URL=redis://localhost:6379
+  ```
+</ParamField>
+
+<ParamField path="sessionStore" type="'redis' | 'memory'">
+  Where to store user sessions.
+
+  **Options:**
+  - `redis` - Store sessions in Redis (recommended for production)
+  - `memory` - Store sessions in memory (development only)
+
+  ```typescript
+  sessionStore: 'redis'
+  ```
+</ParamField>
+
+<Note>
+  Using `memory` for sessions means sessions will be lost when the server restarts.
+</Note>
+
+## Leaderboard Configuration
+
+<ParamField path="leaderboardSource" type="'database' | 'redis'">
+  Source for leaderboard data.
+
+  **Options:**
+  - `database` - Query leaderboards directly from the database
+  - `redis` - Use cached leaderboard data from Redis (faster)
+
+  ```typescript
+  leaderboardSource: 'database'
+  ```
+</ParamField>
+
+## API Endpoints
+
+<ParamField path="api" type="object">
+  API endpoint configuration for your private server.
+
+  ```typescript
+  api: {
+    v1: 'http://api.dev.ppy.sb/v1',
+    sb: 'http://api.dev.ppy.sb/sb',
+  }
+  ```
+
+  <Expandable title="API Fields">
+    <ParamField path="api.v1" type="string">
+      Base URL for the v1 API endpoint.
+    </ParamField>
+
+    <ParamField path="api.sb" type="string">
+      Base URL for the sb (ppy.sb-specific) API endpoint. Only used with `ppy.sb@bancho.py` adapter.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Avatar Configuration
+
+<ParamField path="avatar" type="object">
+  Configure where avatar images are stored and served from.
+
+  ```typescript
+  avatar: {
+    location: resolve('.dump/ppy.sb/avatar'),
+    domain: 'a.ppy.sb',
+  }
+  ```
+
+  <Expandable title="Avatar Fields">
+    <ParamField path="avatar.location" type="string" required>
+      Absolute path to the avatar storage directory. Use `resolve()` to convert relative paths to absolute.
+
+      ```typescript
+      location: resolve('.dump/ppy.sb/avatar')
+      ```
+    </ParamField>
+
+    <ParamField path="avatar.domain" type="string">
+      Domain name for serving avatars.
+
+      ```typescript
+      domain: 'a.ppy.sb'
+      ```
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<Warning>
+  Always use absolute paths or the `resolve()` function for file paths to ensure correct locations when starting Guccho from different directories.
+</Warning>
+
+## Article Configuration
+
+<ParamField path="article" type="object">
+  Configure where article/news content is stored.
+
+  ```typescript
+  article: {
+    location: resolve('articles'),
+  }
+  ```
+
+  <Expandable title="Article Fields">
+    <ParamField path="article.location" type="string" required>
+      Absolute path to the articles directory. Use `resolve()` to convert relative paths.
+
+      ```typescript
+      location: resolve('articles')
+      ```
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Mail Configuration
+
+<ParamField path="mail" type="object">
+  Email service configuration for sending notifications.
+
+  ```typescript
+  mail: {
+    type: 'smtp',
+    auth: 'smtps://account:password@server',
+    sender: 'pe@ppy.sb',
+  }
+  ```
+
+  <Expandable title="Mail Fields">
+    <ParamField path="mail.type" type="string">
+      Mail service type.
+
+      **Options:**
+      - `smtp` - Standard SMTP protocol
+    </ParamField>
+
+    <ParamField path="mail.auth" type="string">
+      SMTP authentication URL.
+
+      **Format:** `smtps://username:password@smtp.example.com:port`
+
+      ```typescript
+      auth: 'smtps://account:password@mail.example.com'
+      ```
+    </ParamField>
+
+    <ParamField path="mail.sender" type="string">
+      Email address to use as the sender.
+
+      ```typescript
+      sender: 'noreply@example.com'
+      ```
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Path Helpers
+
+The `resolve()` function from Node.js converts relative paths to absolute paths:
+
+```typescript
+import { resolve } from 'node:path'
+
+// Relative path
+location: resolve('articles')  // becomes /full/path/to/articles
+
+// Multiple segments
+location: resolve('.dump', 'avatars')  // becomes /full/path/to/.dump/avatars
+```
+
+<Note>
+  Using `resolve()` ensures paths work correctly regardless of where Guccho is started from.
+</Note>
+
+## Complete Example
+
+```typescript
+import { resolve } from 'node:path'
+import { type UserBackendConfig } from './src/def/config'
+import { env, safeEnv } from './src/server/common/utils'
+
+export default {
+  // Backend adapter
+  use: 'ppy.sb@bancho.py',
+
+  // Database connection (required)
+  dsn: env('DB_DSN'),
+
+  // Redis connection (optional, defaults to localhost)
+  redisURL: safeEnv('REDIS_URL') ?? 'redis://localhost',
+
+  // Session and leaderboard configuration
+  sessionStore: 'redis',
+  leaderboardSource: 'database',
+
+  // Articles
+  article: {
+    location: resolve('articles'),
+  },
+
+  // Avatar storage
+  avatar: {
+    location: resolve('.dump/ppy.sb/avatar'),
+    domain: 'a.ppy.sb',
+  },
+
+  // API endpoints
+  api: {
+    v1: 'http://api.dev.ppy.sb/v1',
+    sb: 'http://api.dev.ppy.sb/sb',
+  },
+
+  // Email configuration
+  mail: {
+    type: 'smtp',
+    auth: 'smtps://account:password@smtp.example.com',
+    sender: 'noreply@example.com',
+  },
+} satisfies UserBackendConfig
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="UI Configuration" icon="palette" href="/configuration/ui">
+    Configure branding, footer links, and UI settings
+  </Card>
+  <Card title="Environment Variables" icon="key" href="/configuration/environment">
+    Learn about environment variable management
+  </Card>
+</CardGroup>

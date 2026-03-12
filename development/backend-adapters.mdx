@@ -1,0 +1,367 @@
+---
+title: Backend Adapters
+description: Learn how Guccho's backend adapter system works and how to extend it
+---
+
+## Overview
+
+Backend adapters allow Guccho to support different osu! server implementations (bancho.py, ppy.sb, etc.) while presenting a unified API. The adapter system uses inheritance and abstract classes to define contracts that all implementations must fulfill.
+
+## Adapter Hierarchy
+
+```
+$base (Abstract)
+  ↓ implements
+bancho.py (Concrete)
+  ↓ extends
+ppy.sb@bancho.py (Extended)
+```
+
+### Available Adapters
+
+- **`$base`**: Abstract base provider definitions
+- **`bancho.py`**: Implementation for bancho.py (gulag) servers
+- **`ppy.sb@bancho.py`**: Extended implementation with ppy.sb-specific features
+
+## $base: Abstract Providers
+
+The `$base` directory (`src/server/backend/$base/`) defines abstract provider classes that establish the contract for all backend functionality.
+
+### Provider Structure
+
+Each provider in `$base/server/` is an abstract class:
+
+```typescript
+// $base/server/user.ts
+export abstract class UserProvider<Id, ScoreId> extends IdTransformable {
+  // ID transformation methods (must be implemented)
+  static readonly idToString: typeof idToString
+  static readonly stringToId: typeof stringToId
+
+  // Abstract methods that implementations must provide
+  abstract uniqueIdent(input: string): Promise<boolean>
+  
+  abstract getCompact(
+    opt: UserProvider.OptType & { scope: Scope }
+  ): Promise<UserCompact<Id>>
+  
+  abstract testPassword(
+    opt: UserProvider.OptType,
+    password: string,
+  ): Promise<[boolean, UserCompact<Id>]>
+
+  abstract getFull(query: {
+    handle: string
+    excludes?: Excludes
+    scope: Scope
+  }): Promise<UserFull<Id>>
+
+  // ... more abstract methods
+}
+```
+
+### Key Base Providers
+
+Location: `src/server/backend/$base/server/`
+
+| Provider | Purpose | Key Methods |
+|----------|---------|-------------|
+| `UserProvider` | User management | `getCompact`, `getFull`, `getBests`, `register` |
+| `ScoreProvider` | Score queries | `getScoreById`, `getLeaderboard` |
+| `MapProvider` | Beatmap data | `getById`, `search`, `getLeaderboard` |
+| `SessionProvider` | Session storage | `create`, `get`, `refresh`, `destroy` |
+| `RankProvider` | Rankings | `getLeaderboard`, `getRankings` |
+| `ArticleProvider` | News articles | `list`, `get`, `create`, `update` |
+| `MailProvider` | Email delivery | `send` |
+| `MailTokenProvider` | Email verification | `getOrCreate`, `get`, `deleteAll` |
+
+### Extendable Features
+
+Certain providers are meant to be extended with custom implementations:
+
+```typescript
+// $base/server/@extends.ts
+export abstract class IdTransformable {
+  static readonly idToString: typeof idToString
+  static readonly stringToId: typeof stringToId
+}
+
+export abstract class ScoreIdTransformable {
+  static readonly scoreIdToString: typeof scoreIdToString
+  static readonly stringToScoreId: typeof stringToScoreId
+}
+```
+
+## bancho.py Implementation
+
+The `bancho.py` adapter (`src/server/backend/bancho.py/`) provides concrete implementations for bancho.py servers.
+
+### Index File
+
+```typescript
+// bancho.py/index.ts
+export type Id = number
+export type ScoreId = bigint
+
+export const userRoles = [
+  UserRole.Restricted,
+  UserRole.Verified,
+  UserRole.Supporter,
+  // ...
+]
+
+export const features = new Set<Feature>([])
+```
+
+### Provider Implementation Example
+
+```typescript
+// bancho.py/server/user.ts
+import { UserProvider as Base } from '$base/server'
+
+const drizzle = useDrizzle(schema)
+
+export class UserProvider extends Base<Id, ScoreId> {
+  static readonly idToString = idToString
+  static readonly stringToId = stringToId
+  static readonly scoreIdToString = scoreIdToString
+  static readonly stringToScoreId = stringToScoreId
+
+  async uniqueIdent(input: string): Promise<boolean> {
+    const result = await drizzle
+      .select({ count: count() })
+      .from(schema.users)
+      .where(or(
+        eq(schema.users.name, input),
+        eq(schema.users.safe_name, toSafeName(input))
+      ))
+    return result[0].count === 0
+  }
+
+  async getCompact({ handle, scope }: UserProvider.OptType & { scope: Scope }) {
+    const result = await drizzle
+      .select(userCompactFields)
+      .from(schema.users)
+      .where(or(
+        eq(schema.users.name, handle),
+        eq(schema.users.safe_name, toSafeName(handle))
+      ))
+      .limit(1)
+    
+    if (!result[0]) throw createGucchoError(GucchoError.UserNotFound)
+    return toUserCompact(result[0])
+  }
+
+  // ... implement all abstract methods
+}
+```
+
+### Data Sources
+
+bancho.py adapter uses multiple data sources:
+
+```typescript
+// bancho.py/server/source/drizzle.ts
+export const useDrizzle = (schema: any) => {
+  return drizzle(mysql2Pool, { schema, mode: 'default' })
+}
+
+// bancho.py/server/source/redis.ts
+export const client = createClient({ url: config.redisURL })
+
+// bancho.py/server/source/mysql2.ts
+export const mysql2Pool = createPool(config.dsn)
+```
+
+### Transform Functions
+
+The `transforms/` directory contains conversion utilities:
+
+```typescript
+// bancho.py/transforms/user.ts
+export function toUserCompact(db: DatabaseUserCompactFields): UserCompact<Id> {
+  return {
+    id: db.id,
+    name: db.name,
+    safeName: db.safe_name,
+    country: fromCountryCode(db.country),
+    roles: userPriv.toRoles(db.priv),
+    // ...
+  }
+}
+```
+
+## ppy.sb@bancho.py Extension
+
+The `ppy.sb@bancho.py` adapter extends `bancho.py` with ppy.sb-specific functionality.
+
+### Extension Pattern
+
+```typescript
+// ppy.sb@bancho.py/index.ts
+import { features as bF } from '../bancho.py'
+
+// Re-export everything from bancho.py
+export {
+  hasLeaderboardRankingSystem,
+  hasRankingSystem,
+  hasRuleset,
+  modes,
+  rulesets,
+  rankingSystems,
+  userRoles,
+} from '../bancho.py'
+
+export type {
+  Id,
+  ScoreId,
+  ActiveMode,
+  ActiveRuleset,
+  // ...
+} from '../bancho.py'
+
+// Add ppy.sb-specific features
+export const features = new Set<Feature>([...bF])
+```
+
+### Extended Database Schema
+
+```typescript
+// ppy.sb@bancho.py/drizzle/schema.ts
+import * as banchopySchema from '../../bancho.py/drizzle/schema'
+
+export * from '../../bancho.py/drizzle/schema'
+
+// Add ppy.sb-specific tables
+export const ppysbAdditionalTable = mysqlTable('ppy_sb_feature', {
+  // ...
+})
+```
+
+## Creating a Custom Adapter
+
+To create a new backend adapter:
+
+### 1. Create Adapter Directory
+
+```bash
+mkdir src/server/backend/my-server
+```
+
+### 2. Define Types
+
+```typescript
+// my-server/index.ts
+export type Id = string  // or number, bigint, etc.
+export type ScoreId = string
+
+export const userRoles = [/* ... */]
+export const features = new Set<Feature>([])
+
+export { modes, rulesets, rankingSystems } from '$base'
+```
+
+### 3. Implement Providers
+
+```typescript
+// my-server/server/user.ts
+import { UserProvider as Base } from '$base/server'
+
+export class UserProvider extends Base<Id, ScoreId> {
+  static readonly idToString = (id: Id) => id.toString()
+  static readonly stringToId = (s: string) => s
+
+  async uniqueIdent(input: string): Promise<boolean> {
+    // Your implementation
+  }
+
+  async getCompact(opt) {
+    // Your implementation
+  }
+
+  // Implement all abstract methods from Base
+}
+```
+
+### 4. Export Providers
+
+```typescript
+// my-server/server/index.ts
+export { UserProvider } from './user'
+export { ScoreProvider } from './score'
+export { MapProvider } from './map'
+// ... export all required providers
+```
+
+### 5. Configure Backend
+
+```typescript
+// guccho.backend.config.ts
+export default {
+  use: 'my-server',  // Activate your adapter
+  // ...
+}
+```
+
+## ID Type Abstraction
+
+Adapters can use different ID types:
+
+```typescript
+// bancho.py uses number and bigint
+export type Id = number
+export type ScoreId = bigint
+
+export function idToString(id: Id): string {
+  return id.toString()
+}
+
+export function stringToId(id: string): Id {
+  return Number.parseInt(id)
+}
+```
+
+This allows flexibility for different database schemas while maintaining type safety.
+
+## Provider Guidelines
+
+### Best Practices
+
+1. **Always implement all abstract methods** - TypeScript will enforce this
+2. **Use transform functions** - Keep database schema separate from API types
+3. **Handle errors consistently** - Use `GucchoError` enum for error codes
+4. **Log important operations** - Use the logger from `$base/logger`
+5. **Cache when appropriate** - Use Redis or memory for frequently accessed data
+
+### Error Handling
+
+```typescript
+import { GucchoError } from '~/def/messages'
+
+if (!user) {
+  throwGucchoError(GucchoError.UserNotFound)
+}
+```
+
+### Logging
+
+```typescript
+import { Logger } from '$base/logger'
+
+const logger = Logger.child({ label: 'user' })
+
+logger.info(`User ${user.safeName}<${user.id}> registered.`, {
+  user: pick(user, ['id', 'name'])
+})
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="sitemap" href="/development/architecture">
+    Understand the overall system architecture
+  </Card>
+  <Card title="TRPC Integration" icon="code" href="/development/trpc">
+    Learn how providers connect to TRPC routers
+  </Card>
+</CardGroup>

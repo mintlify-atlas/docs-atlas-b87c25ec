@@ -1,0 +1,329 @@
+---
+title: Themes & Styling
+description: Customize colors, themes, and dark mode in Guccho
+---
+
+## Overview
+
+Guccho uses [DaisyUI](https://daisyui.com/) for theming, built on top of [Tailwind CSS](https://tailwindcss.com/). The application comes with two built-in themes: `guccho-light` and `guccho-dark`.
+
+## Built-in Themes
+
+Guccho includes two custom themes defined in `daisyui.themes.ts`:
+
+### Light Theme (guccho-light)
+
+Based on DaisyUI's "cupcake" theme with custom colors:
+
+```typescript
+'guccho-light': {
+  ...cupcake,
+  'primary': cupcake.secondary,
+  'secondary': cupcake.primary,
+  'neutral': tw.slate[200],
+  'base-50': tw.slate[50],
+  'base-100': tw.slate[100],
+  'base-200': tw.slate[200],
+  'base-300': tw.slate[300],
+  'base-content': tw.slate[900],
+  // ... additional gbase colors
+}
+```
+
+### Dark Theme (guccho-dark)
+
+Based on DaisyUI's "dracula" theme with custom colors:
+
+```typescript
+'guccho-dark': {
+  ...dracula,
+  'primary': colors.wewak[500],
+  'neutral': tw.slate[500],
+  'base-50': tw.slate[950],
+  'base-100': tw.slate[900],
+  'base-200': tw.slate[800],
+  'base-300': tw.slate[700],
+  'base-content': tw.slate[100],
+  // ... additional gbase colors
+}
+```
+
+## Theme Configuration
+
+### DaisyUI Settings
+
+Theme configuration is in `tailwind.config.ts`:
+
+```typescript
+daisyui: {
+  darkTheme: 'guccho-dark',
+  themes: guccho,
+  base: false,
+}
+```
+
+Configuration options:
+- **darkTheme**: Sets which theme to use in dark mode (default: `'guccho-dark'`)
+- **themes**: Array of theme objects to include
+- **base**: Set to `false` to disable DaisyUI's base styles
+
+### Common Theme Variables
+
+Both themes share common base variables:
+
+```typescript
+const base = {
+  '--rounded-btn': '1rem',
+  '--btn-text-case': 'normal',
+  '--tab-border': '2px',
+  '--tab-radius': '.5rem',
+  '--tw-border-opacity': '0.2',
+}
+```
+
+## Custom Colors
+
+### Tailwind Color Extensions
+
+Guccho extends Tailwind's color palette in `tailwind.config.ts`:
+
+```typescript
+theme: {
+  extend: {
+    fontFamily: {
+      sans: [
+        'Kodchasan',
+        'Hannotate SC',
+        ...defaultTheme.fontFamily.sans,
+      ],
+    },
+    colors,
+    animation: {
+      'role-text': 'text 7s ease infinite',
+    },
+  },
+}
+```
+
+Custom colors are imported from `src/palette.ts` and include the custom "wewak" color palette.
+
+### GBase Colors
+
+Both themes include a custom "gbase" color scale (50-950) derived from Tailwind's slate colors:
+
+```typescript
+const slateHSL = convertSingle(tw.slate, hex.hsl, ([h, s, l]) => `${h} ${s}% ${l}%`)
+const gSlate = {
+  '--color-gbase-50': slateHSL[50],
+  '--color-gbase-100': slateHSL[100],
+  // ... up to 950
+}
+```
+
+These are available as CSS variables throughout the application.
+
+## Customizing Themes
+
+### Modifying Existing Themes
+
+Edit `daisyui.themes.ts` to customize the built-in themes:
+
+```typescript
+export const guccho = [
+  {
+    'guccho-light': {
+      ...cupcake,
+      ...base,
+      'primary': '#your-color',  // Change primary color
+      'secondary': '#your-color', // Change secondary color
+      'accent': '#your-color',    // Add accent color
+      // ... other DaisyUI color variables
+    },
+  },
+  {
+    'guccho-dark': {
+      // ... your customizations
+    },
+  },
+]
+```
+
+### Creating New Themes
+
+Add a new theme to the guccho array:
+
+```typescript
+export const guccho = [
+  // ... existing themes
+  {
+    'my-custom-theme': {
+      'primary': '#3b82f6',
+      'secondary': '#8b5cf6',
+      'accent': '#10b981',
+      'neutral': '#1f2937',
+      'base-100': '#ffffff',
+      'base-200': '#f3f4f6',
+      'base-300': '#e5e7eb',
+      'base-content': '#1f2937',
+      // ... other required variables
+    },
+  },
+]
+```
+
+## Dark Mode
+
+Dark mode is handled automatically by DaisyUI based on the user's system preferences or manual selection. The default dark theme is `guccho-dark`.
+
+### Switching Themes Programmatically
+
+DaisyUI themes can be switched using the `data-theme` attribute:
+
+```javascript
+document.documentElement.setAttribute('data-theme', 'guccho-dark')
+```
+
+Or in a Vue component:
+
+```vue
+<template>
+  <div :data-theme="currentTheme">
+    <!-- Your content -->
+  </div>
+</template>
+
+<script setup>
+const currentTheme = ref('guccho-light')
+
+function toggleTheme() {
+  currentTheme.value = currentTheme.value === 'guccho-light' 
+    ? 'guccho-dark' 
+    : 'guccho-light'
+}
+</script>
+```
+
+## DaisyUI Color Reference
+
+DaisyUI uses semantic color names that you can customize:
+
+- **primary** - Primary brand color
+- **secondary** - Secondary brand color
+- **accent** - Accent color for highlights
+- **neutral** - Neutral color for text and borders
+- **base-100** - Base background color
+- **base-200** - Slightly darker/lighter background
+- **base-300** - Even more contrast
+- **base-content** - Foreground content color
+- **info** - Informational messages
+- **success** - Success messages
+- **warning** - Warning messages
+- **error** - Error messages
+
+## CSS Variables
+
+### Using Theme Colors
+
+Access theme colors in your CSS:
+
+```css
+.my-component {
+  background-color: hsl(var(--p)); /* primary */
+  color: hsl(var(--bc)); /* base-content */
+}
+```
+
+### Custom Variables
+
+Access custom gbase colors:
+
+```css
+.my-element {
+  background: hsl(var(--color-gbase-100));
+  border-color: hsl(var(--color-gbase-300));
+}
+```
+
+## Styling Best Practices
+
+1. **Use DaisyUI components** - Leverage DaisyUI's pre-built components for consistency
+2. **Semantic colors** - Use semantic color names (primary, secondary) instead of specific colors
+3. **Theme-aware styles** - Always use CSS variables that respect the active theme
+4. **Test both themes** - Ensure your customizations work in both light and dark modes
+5. **Minimal custom CSS** - Rely on Tailwind utilities and DaisyUI components when possible
+
+## SCSS Support
+
+Guccho includes SCSS preprocessing with the modern compiler:
+
+```typescript
+vite: {
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern-compiler',
+      },
+    },
+  },
+}
+```
+
+Global styles are imported in `nuxt.config.ts`:
+
+```typescript
+css: [
+  '~/assets/styles/main.scss',
+  '~/components/content/styles/typography.scss',
+  '~/assets/styles/transitions.scss',
+  '~/assets/styles/daisyui.scss',
+]
+```
+
+## Tailwind Configuration
+
+### Safelist Patterns
+
+Certain classes are safelisted to prevent purging:
+
+```typescript
+safelist: [
+  { pattern: /tab.+/ },
+  { pattern: /btn.+/ },
+  { pattern: /hljs.+/ },
+]
+```
+
+### Content Paths
+
+Tailwind scans these paths for class names:
+
+```typescript
+content: [
+  './src/components/**/*.{vue,ts,js}',
+  './src/layouts/**/*.vue',
+  './src/pages/**/*.vue',
+  './src/plugins/**/*.{js,ts}',
+  './src/app.{js,ts,vue}',
+]
+```
+
+## Syntax Highlighting
+
+Code blocks use the Night Owl theme via tailwind-highlightjs:
+
+```typescript
+hljs: {
+  theme: 'night-owl',
+}
+```
+
+## Additional Resources
+
+- [DaisyUI Documentation](https://daisyui.com/)
+- [DaisyUI Themes Guide](https://daisyui.com/docs/themes/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [DaisyUI Color Reference](https://daisyui.com/docs/colors/)
+
+<Tip>
+Watch the theme and config files for hot reload during development. Changes to `daisyui.themes.ts` and `tailwind.config.ts` are automatically detected.
+</Tip>

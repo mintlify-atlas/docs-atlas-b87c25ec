@@ -1,0 +1,212 @@
+---
+title: "User Pages"
+description: "Player profile pages with statistics, scores, and achievements"
+---
+
+Guccho provides comprehensive user profile pages that display player statistics, scores, and achievements across different game modes and ranking systems.
+
+## Profile Overview
+
+Each user profile page displays:
+
+<CardGroup cols={2}>
+  <Card title="Player Information" icon="user">
+    Username, avatar, clan badge, online status, and supporter/staff badges
+  </Card>
+  <Card title="Statistics" icon="chart-bar">
+    Rank, performance points, level, play count, max combo, and playtime
+  </Card>
+  <Card title="Score History" icon="clock">
+    Best scores, top plays, and recent scores with detailed breakdowns
+  </Card>
+  <Card title="Social Features" icon="users">
+    Friend list, relationship status, and mutual friends
+  </Card>
+</CardGroup>
+
+## Profile Components
+
+### Header Section
+
+The profile header displays key player information:
+
+- **Avatar**: Large profile picture with optional clan badge overlay
+- **Username**: Displayed with role-based color coding (staff, supporter, verified)
+- **Safe Name**: Unique handle in `@username` format
+- **Status Indicator**: Shows online/offline/AFK status with current activity
+
+<Tip>
+  If a player is currently playing, the status displays the beatmap they're on in real-time.
+</Tip>
+
+### Mode Switcher
+
+Users can switch between different game modes and rulesets:
+
+- **Game Modes**: osu!standard, osu!taiko, osu!catch, osu!mania
+- **Rulesets**: Different scoring and calculation methods per mode
+- **Ranking Systems**: PPv1, PPv2, RankedScore, TotalScore
+
+The selected mode affects all statistics and scores displayed on the page.
+
+### Statistics Panel
+
+The statistics section shows comprehensive player metrics:
+
+```typescript
+// Statistics displayed on user pages (src/components/userpage/statistics.vue)
+{
+  rank: number,              // Global rank
+  countryRank: number,       // Country-specific rank
+  performance: number,       // PP or score value
+  level: number,            // Player level with percentage
+  playCount: number,        // Total plays
+  playTime: number,         // Hours, minutes, seconds
+  maxCombo: number,         // Highest combo achieved
+  totalHits: number,        // Total hit objects
+  accuracy: number          // Overall accuracy percentage
+}
+```
+
+<Note>
+  Statistics are calculated per mode/ruleset combination. Switching modes will display different statistics.
+</Note>
+
+### Score Sections
+
+The profile displays three types of scores:
+
+#### Best Scores
+
+Top performances ranked by the selected ranking system (PPv1, PPv2, etc.).
+
+- Sorted by performance points or score value
+- Shows mod combinations used
+- Displays accuracy, combo, and rank achieved
+- Links to individual score pages for detailed analysis
+
+#### Top Scores
+
+Highest-scoring plays on individual beatmaps.
+
+- One score per beatmap (the highest)
+- Useful for tracking map-specific achievements
+- Shows beatmap difficulty and star rating
+
+#### Recent Scores
+
+Latest plays across all beatmaps.
+
+- Chronologically ordered
+- Includes failed attempts
+- Shows recent activity and improvement trends
+
+### Score Rank Composition
+
+Visual breakdown of score grades:
+
+- SS, S, A, B, C, D grade distribution
+- Interactive chart showing grade percentages
+- Helps players identify improvement areas
+
+## User Relationships
+
+Guccho supports player relationships:
+
+<Steps>
+  <Step title="Add Friend">
+    Click the heart button on any user profile to add them as a friend.
+  </Step>
+  <Step title="Mutual Friends">
+    When both players are friends, the relationship is marked as mutual.
+  </Step>
+  <Step title="Friend Count">
+    The friend button displays the total number of friends a player has.
+  </Step>
+</Steps>
+
+<Warning>
+  Friend relationships are one-way unless both players add each other.
+</Warning>
+
+## Restricted Users
+
+When viewing restricted user profiles:
+
+- A warning banner is displayed at the top
+- Profile visibility is limited to the user themselves and staff
+- Statistics and scores may be hidden or limited
+
+## Profile Editing
+
+Players can edit their own profiles:
+
+1. Navigate to your profile page
+2. Click the **Edit** button in the header
+3. Update your custom profile content
+4. Save changes
+
+<Info>
+  Profile content supports rich text formatting with Markdown.
+</Info>
+
+## Navigation Features
+
+The profile page includes a sticky navigation bar that highlights the current section:
+
+- **Heading**: Jump to profile overview
+- **Statistics**: Jump to statistics panel
+- **Best Scores**: View top performances
+- **Top Scores**: See highest beatmap scores
+- **Recent Scores**: Check latest activity
+
+## URL Structure
+
+User pages are accessible via multiple URL formats for compatibility:
+
+```bash
+/user/:handle    # Primary format
+/u/:handle       # osu! client compatible
+/users/:handle   # Alternative format
+```
+
+## Implementation Details
+
+<Accordion title="Page Implementation">
+  User pages are implemented in `src/pages/user/[handle].vue` using Vue 3 composition API with server-side rendering support.
+</Accordion>
+
+<Accordion title="Components">
+  Key components:
+  - `userpage-heading.vue`: Profile header with avatar and user info
+  - `userpage-statistics.vue`: Statistics panel
+  - `userpage-best-scores.vue`: Best performance scores
+  - `userpage-top-scores.vue`: Top beatmap scores
+  - `userpage-recent-scores.vue`: Recent plays
+  - `userpage-profile.vue`: Custom profile content
+</Accordion>
+
+<Accordion title="Data Loading">
+  User data is loaded server-side for SEO optimization. Statistics and scores are loaded on-demand with intersection observers for performance.
+</Accordion>
+
+## SEO Optimization
+
+User pages include full SEO metadata:
+
+- Page title: `{username} - {server name}`
+- Description: Current mode, ruleset, and ranking system
+- Open Graph tags with user avatar
+- Twitter Card metadata
+- Canonical URLs
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Leaderboards" icon="ranking-star" href="/features/leaderboards">
+    Compare players globally or by country
+  </Card>
+  <Card title="Clans" icon="users" href="/features/clans">
+    View clan memberships and clan pages
+  </Card>
+</CardGroup>

@@ -1,0 +1,332 @@
+---
+title: "Beatmaps"
+description: "Beatmap browsing, search, and detailed beatmapset pages"
+---
+
+Guccho provides comprehensive beatmap browsing and detailed beatmapset pages with leaderboards, difficulty selection, and download options.
+
+## Overview
+
+Beatmap pages display all information about a beatmapset including difficulties, metadata, properties, and leaderboards.
+
+<CardGroup cols={2}>
+  <Card title="Beatmapset Information" icon="info-circle">
+    Title, artist, creator, status, and metadata
+  </Card>
+  <Card title="Difficulty Selection" icon="sliders">
+    Switch between difficulties with detailed properties
+  </Card>
+  <Card title="Beatmap Leaderboards" icon="trophy">
+    Top scores for each difficulty across ranking systems
+  </Card>
+  <Card title="Download Options" icon="download">
+    Direct downloads and external links
+  </Card>
+</CardGroup>
+
+## Beatmapset Pages
+
+### URL Formats
+
+Beatmapset pages are accessible via multiple URL formats:
+
+```bash
+/beatmapset/:id           # Primary format
+/s/:id                    # Short format
+/beatmapsets/:id          # osu! compatible format
+```
+
+**Query Parameters:**
+- `beatmap`: Specific beatmap MD5 or ID to select
+- `mode`: Game mode
+- `ruleset`: Ruleset identifier
+- `rank`: Ranking system
+
+**Example:**
+```bash
+/beatmapset/12345?beatmap=abc123&mode=osu&ruleset=std&rank=PPv2
+```
+
+### Header Section
+
+The beatmapset header displays:
+
+```
+{artist} - {title}
+by {creator}
+```
+
+With an artistic background blur effect from the beatmap cover image.
+
+### Difficulty Tabs
+
+All difficulties in the beatmapset are shown as tabs:
+
+- Clicking a tab switches to that difficulty
+- Updates leaderboard and properties automatically
+- URL updates to reflect selected difficulty
+- Highlighted tab shows current selection
+
+<Tip>
+  If you arrive from a score page, the specific difficulty for that score is automatically selected.
+</Tip>
+
+## Beatmap Properties
+
+Detailed properties are displayed for each difficulty:
+
+### Basic Information
+
+<ParamField path="creator" type="string">
+  The mapper who created this beatmap
+</ParamField>
+
+<ParamField path="status" type="enum">
+  Ranking status: Ranked, Approved, Loved, Qualified, Pending, WIP, Graveyard
+</ParamField>
+
+<ParamField path="beatmapId" type="number">
+  Unique identifier for this specific difficulty
+</ParamField>
+
+<ParamField path="source" type="enum">
+  Where the beatmap came from: Bancho, Osu, Ripple, etc.
+</ParamField>
+
+<ParamField path="lastUpdate" type="date">
+  When the beatmap was last modified
+</ParamField>
+
+### Difficulty Properties
+
+| Property | Icon | Description |
+|----------|------|-------------|
+| **BPM** | 🎵 | Beats per minute |
+| **Star Rating** | ⭐ | Overall difficulty (0.0-10.0+) |
+| **Circle Size** | ⚪ | Size of hit circles |
+| **Approach Rate** | ➡️ | How quickly circles approach |
+| **OD** | 🎯 | Overall difficulty / accuracy requirement |
+| **HP Drain** | ❤️ | Health drain rate |
+| **Duration** | ⏱️ | Total length in seconds |
+
+### Hit Objects
+
+Breakdown of map composition:
+
+- **Circles**: Number of hit circles
+- **Sliders**: Number of sliders
+- **Spinners**: Number of spinners
+
+<Note>
+  Hit object counts are mode-specific. For example, Taiko maps show notes instead of circles.
+</Note>
+
+## Mode and Ruleset Switching
+
+### Mode Selection
+
+Switch between game modes with visual icons:
+
+- osu!standard (circle icon)
+- osu!taiko (drum icon)
+- osu!catch (fruit icon)
+- osu!mania (piano keys icon)
+
+<Warning>
+  Some beatmaps are mode-specific. Converting from other modes may not be possible.
+</Warning>
+
+### Ruleset Selection
+
+Change the calculation ruleset:
+
+- Affects how scores are calculated and ranked
+- Available rulesets depend on server configuration
+- Updates leaderboard to show scores for selected ruleset
+
+## Beatmap Leaderboards
+
+Each difficulty has its own leaderboard showing top scores:
+
+### Leaderboard Features
+
+- Shows top 20 scores
+- Switches between ranking systems (PPv2, PPv1, etc.)
+- Displays player, score, accuracy, combo, and mods
+- Ranks scores according to selected ranking system
+- Links to individual score pages
+
+### Score Display
+
+Each score shows:
+
+```typescript
+{
+  rank: number,           // Position on leaderboard
+  player: string,         // Username
+  score: number,          // Total score
+  accuracy: number,       // Hit accuracy %
+  combo: number,          // Max combo achieved
+  mods: string[],        // Mods used (HD, HR, DT, etc.)
+  pp: number,            // Performance points
+  date: Date             // When score was set
+}
+```
+
+<Info>
+  Leaderboards update automatically when switching modes, rulesets, or ranking systems.
+</Info>
+
+## Ranking System Switcher
+
+Switch between ranking systems to see different leaderboard orderings:
+
+<Tabs>
+  <Tab title="PPv2">
+    Modern performance point calculation. Best overall skill measurement.
+  </Tab>
+  <Tab title="PPv1">
+    Legacy PP calculation. Used by older servers.
+  </Tab>
+  <Tab title="RankedScore">
+    Total score from ranked maps only.
+  </Tab>
+  <Tab title="TotalScore">
+    Total score from all maps.
+  </Tab>
+</Tabs>
+
+The selected ranking system is highlighted with a colored border.
+
+## Download Options
+
+Beatmaps can be downloaded through multiple methods:
+
+### Direct Downloads
+
+- **osu!direct**: In-game download (if supported)
+- **Server Mirror**: Direct .osz file download
+
+### External Links
+
+- **osu.ppy.sh**: Official osu! website
+- **Chimu.moe**: Beatmap mirror
+- **Beatconnect**: Alternative mirror
+- **Nerinyan**: Another beatmap source
+
+<CardGroup cols={2}>
+  <Card title="Direct Download" icon="download">
+    Fastest option, downloads directly from your server
+  </Card>
+  <Card title="External Links" icon="link">
+    Access beatmaps from other sources if not available locally
+  </Card>
+</CardGroup>
+
+## Beatmap Requests
+
+For unranked beatmaps, players can vote to request ranking:
+
+<Steps>
+  <Step title="View Request Status">
+    If a beatmap is pending ranking, a request section appears.
+  </Step>
+  <Step title="Vote for Beatmap">
+    Click the **Vote** button to support ranking the beatmap.
+  </Step>
+  <Step title="Track Votes">
+    See the total vote count displayed on the page.
+  </Step>
+  <Step title="Unvote">
+    Click **Unvote** to remove your vote.
+  </Step>
+</Steps>
+
+<Info>
+  Beatmap request features may be disabled depending on server configuration.
+</Info>
+
+## Visual Effects
+
+Beatmapset pages include polished visual effects:
+
+### Background Blur
+
+The beatmap cover image is displayed as a blurred background:
+
+- Fades in smoothly after loading
+- Different blur effects for light/dark mode
+- Creates depth and visual interest
+- Performance optimized with CSS transforms
+
+### Loading States
+
+When switching difficulties or ranking systems:
+
+- Smooth opacity transitions
+- Loading spinner overlays
+- Maintains page structure (no layout shift)
+- Prevents interaction during loading
+
+## Mobile Responsiveness
+
+Beatmap pages are fully responsive:
+
+- Difficulty tabs scroll horizontally on mobile
+- Properties displayed in a single column
+- Leaderboard table scrolls horizontally
+- Download options collapse into a menu
+- Touch-optimized buttons and tabs
+
+## SEO Optimization
+
+Beatmapset pages include rich metadata:
+
+- **Title**: `{artist} - {title} > {difficulty}`
+- **Description**: Difficulty name and properties
+- **Open Graph**: Cover image and metadata
+- **Twitter Card**: Summary with beatmap cover
+- **Canonical URL**: Proper URL formatting
+
+## Implementation Details
+
+<Accordion title="Page Implementation">
+  Beatmapset pages are in `src/pages/beatmapset/[id].vue` with dynamic routing and query parameter handling.
+</Accordion>
+
+<Accordion title="Components">
+  Key components:
+  - `app-mode-switcher.vue`: Mode and ruleset selection
+  - `app-scores-table.vue`: Leaderboard display
+  - `app-scores-ranking-system-switcher.vue`: Ranking system tabs
+</Accordion>
+
+<Accordion title="Data Loading">
+  ```typescript
+  // Beatmapset query
+  {
+    id: string,  // Beatmapset ID
+  }
+  
+  // Leaderboard query
+  {
+    md5: string,                // Specific beatmap hash
+    mode: ActiveMode,
+    ruleset: ActiveRuleset,
+    rankingSystem: string,
+    page: number,
+    pageSize: number           // Default: 20
+  }
+  ```
+</Accordion>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="User Pages" icon="user" href="/features/user-pages">
+    View player profiles and their scores
+  </Card>
+  <Card title="Leaderboards" icon="ranking-star" href="/features/leaderboards">
+    Global player rankings
+  </Card>
+</CardGroup>

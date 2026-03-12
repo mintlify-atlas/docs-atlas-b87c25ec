@@ -1,0 +1,554 @@
+---
+title: Status Page
+description: Monitor server health, system metrics, and service availability
+---
+
+The status page provides real-time monitoring of your Guccho server's health, displaying service status, system resource usage, and detailed metrics for administrators.
+
+## Overview
+
+The status page is accessible at `/status` and displays:
+
+- **Service Status**: Real-time availability of all server components
+- **System Metrics**: CPU and memory usage (admin only)
+- **Server Configuration**: Environment variables and settings (owner only)
+
+## Service Status
+
+The service status section displays the operational status of all monitored services.
+
+### Status Indicators
+
+Services are displayed as cards with color-coded borders:
+
+- **Green**: Service is up and operational
+- **Orange**: Service is degraded
+- **Red**: Service is down
+- **Gray**: Status unknown
+
+```vue
+<div
+  class="border-l-8 rounded-md"
+  :class="{
+    'border-green-500': service[0] === Monitored.Status.Up,
+    'border-orange-500': service[0] === Monitored.Status.Degraded,
+    'border-red-500': service[0] === Monitored.Status.Down,
+    'border-gray-200': service[0] === Monitored.Status.Unknown,
+  }"
+>
+  {{ $t(localeKey.service(key as string)) }}
+  <div class="text-sm text-gray-500">
+    <span>{{ service[1] }}</span>
+  </div>
+</div>
+```
+
+From `src/pages/status.vue:129-145`
+
+### Monitored Services
+
+The system automatically monitors all services registered in `server/singleton/service` that implement the `Monitored` interface.
+
+### Auto-Refresh
+
+Service status refreshes automatically every 60 seconds:
+
+```typescript
+const { data: publicData, refresh } = await useAsyncData(
+  async () => app.$client.status.public.query()
+)
+
+let publicInterval: ReturnType<typeof setInterval>
+onBeforeMount(() => {
+  clearInterval(publicInterval)
+  publicInterval = setInterval(refresh, 60 * 1000)
+  onBeforeUnmount(() => clearInterval(publicInterval))
+})
+```
+
+From `src/pages/status.vue:21-28`
+
+## System Metrics (Admin Only)
+
+Administrators and owners see additional system performance metrics.
+
+### System Load
+
+Displays CPU usage broken down by:
+
+- **User**: CPU time spent in user space
+- **System**: CPU time spent in kernel space
+
+The data is collected from the system's current load information:
+
+```typescript
+static async load() {
+  const load = await currentLoad()
+  return {
+    app: {
+      web: MonitorProvider.processUsage,
+    },
+    system: {
+      avg: load.avgLoad,
+      current: load.currentLoad,
+      user: load.currentLoadUser,
+      system: load.currentLoadSystem,
+      idle: load.currentLoadIdle,
+      nice: load.currentLoadNice,
+    },
+  }
+}
+```
+
+From `src/server/backend/$base/server/monitor.ts:35-51`
+
+### Application Load
+
+Shows CPU usage specifically for the Guccho application:
+
+- **Total**: Total application CPU usage
+- **Web**: Web server process usage
+- **Other**: Additional background processes
+
+The system tracks application CPU usage by measuring process CPU time:
+
+```typescript
+static collectLoad() {
+  const durationUsage = cpuUsage(MonitorProvider.lastUsage)
+  const duration = hrtime(MonitorProvider.lastTime)
+
+  MonitorProvider.lastTime = hrtime()
+  MonitorProvider.lastUsage = cpuUsage()
+
+  const calc = (a: number, b: [number, number]) => 
+    MonitorProvider.#calcPercentageLoad(a, b) / cpus().length
+
+  MonitorProvider.processUsage = {
+    user: calc(durationUsage.user, duration) * 10000,
+    system: calc(durationUsage.system, duration) * 10000,
+    get current() {
+      return this.user + this.system
+    },
+  }
+}
+```
+
+From `src/server/backend/$base/server/monitor.ts:53-69`
+
+### Memory Usage
+
+Displays system memory statistics:
+
+- **Active**: Memory currently in use
+- **Cache**: Memory used for disk caching
+- **Free**: Available memory
+- **Total**: Total system memory
+
+```typescript
+static async memory() {
+  const m = await mem()
+  return {
+    system: pick(m, [
+      'total',
+      'available',
+      'free',
+      'used',
+      'active',
+      'buffcache',
+    ]),
+  }
+}
+```
+
+From `src/server/backend/$base/server/monitor.ts:71-84`
+
+### Visual Representation
+
+Metrics are displayed as progress bars with color-coded segments:
+
+```vue
+<div class="multi-progress-bar-container">
+  <div
+    :style="percentWidth(memory.system.active / memory.system.total * 100)"
+    class="bg-blue-500 multi-progress-bar"
+  >
+    Active
+  </div>
+  <div
+    :style="percentWidth(memory.system.buffcache / memory.system.total * 100)"
+    class="bg-teal-500 multi-progress-bar"
+  >
+    Cache
+  </div>
+  <div
+    :style="percentWidth(memory.system.free / memory.system.total * 100)"
+    class="bg-gbase-300/10 multi-progress-bar"
+  >
+    Free
+  </div>
+</div>
+```
+
+From `src/pages/status.vue:209-228`
+
+### Metric Refresh Rate
+
+Admin metrics update every 2 seconds for near real-time monitoring:
+
+```typescript
+const { data: adminData, refresh: refreshAdmin } = await useAsyncData(
+  async () =>
+    session.role.admin
+      ? { metrics: await app.$client.status.metrics.query() }
+      : {},
+)
+
+if (session.role.admin) {
+  let adminInterval: ReturnType<typeof setInterval>
+  onBeforeMount(() => {
+    clearInterval(adminInterval)
+    adminInterval = setInterval(refreshAdmin, 2000)
+    onBeforeUnmount(() => clearInterval(adminInterval))
+  })
+}
+```
+
+From `src/pages/status.vue:15-37`
+
+## Server Configuration (Owner Only)
+
+Server owners see additional configuration information.
+
+### App Configuration
+
+Displays the runtime Nuxt configuration object:
+
+```vue
+<JsonViewer
+  :value="$config"
+  :expand-depth="999"
+  theme="light"
+  copyable
+  boxed
+/>
+```
+
+From `src/pages/status.vue:233-240`
+
+### NPM Environment
+
+Shows npm-related environment variables:
+
+```vue
+<JsonViewer
+  :value="serverConfig?.npm"
+  :expand-depth="999"
+  theme="light"
+  copyable
+  boxed
+/>
+```
+
+From `src/pages/status.vue:244-250`
+
+### System Environment
+
+Displays all environment variables (excluding sensitive npm package info):
+
+```typescript
+static async config() {
+  const npm: Record<string, unknown> = {}
+  const npmConfig: Record<string, unknown> = {}
+  const returnValue: Record<string, unknown> = {}
+  
+  for (const key in env) {
+    if (key.startsWith('npm_package_scripts')) {
+      continue
+    }
+    if (key.startsWith('npm_package_dependencies_') || 
+        key.startsWith('npm_package_devDependencies_')) {
+      continue
+    }
+    if (key.startsWith('npm_config_')) {
+      npmConfig[key.slice('npm_config_'.length)] = env[key]
+      continue
+    }
+    if (key.startsWith('npm_')) {
+      npm[key.slice('npm_'.length)] = env[key]
+      continue
+    }
+    returnValue[key] = env[key]
+  }
+  
+  return {
+    npm: { ...npm, config: npmConfig },
+    ...returnValue,
+  }
+}
+```
+
+From `src/server/backend/$base/server/monitor.ts:97-135`
+
+## Access Control
+
+The status page has tiered access levels:
+
+### Public Access
+
+**Available to**: Everyone
+
+**Displays**:
+- Service status cards
+- Service descriptions
+
+```typescript
+const { data: publicData } = await useAsyncData(
+  async () => app.$client.status.public.query()
+)
+```
+
+From `src/pages/status.vue:21`
+
+### Admin Access
+
+**Available to**: Admins and Owners
+
+**Additional displays**:
+- System load (CPU usage)
+- Application load breakdown
+- Memory usage statistics
+
+```typescript
+const { data: adminData } = await useAsyncData(
+  async () =>
+    session.role.admin
+      ? { metrics: await app.$client.status.metrics.query() }
+      : {},
+)
+```
+
+From `src/pages/status.vue:15-19`
+
+### Owner Access
+
+**Available to**: Server Owners only
+
+**Additional displays**:
+- Application configuration
+- NPM environment variables
+- System environment variables
+
+```typescript
+const { data: serverConfig } = await useAsyncData(
+  async () =>
+    session.role.owner
+      ? await app.$client.status.config.query()
+      : undefined
+)
+```
+
+From `src/pages/status.vue:9-13`
+
+## API Endpoints
+
+The status page uses tRPC endpoints:
+
+```typescript
+export const router = _router({
+  public: p.query(monitor.reportStatus),
+  metrics: staffProcedure.query(MonitorProvider.metrics),
+  config: ownerProcedure.query(MonitorProvider.config),
+})
+```
+
+From `src/server/trpc/routers/status.ts:5-9`
+
+### Endpoints
+
+- `status.public` - Returns service status (public)
+- `status.metrics` - Returns system metrics (admin)
+- `status.config` - Returns configuration (owner)
+
+## Implementing Service Monitoring
+
+To make a service appear on the status page:
+
+### 1. Implement the Monitored Interface
+
+```typescript
+import { Monitored } from '$base/server/@extends'
+
+export class MyService extends Monitored {
+  [Monitored.status]: Monitored.Report = [
+    Monitored.Status.Unknown, 
+    'Initializing...'
+  ]
+  
+  async initialize() {
+    try {
+      // ... initialization logic
+      this[Monitored.status] = [
+        Monitored.Status.Up, 
+        'Service operational'
+      ]
+    } catch (error) {
+      this[Monitored.status] = [
+        Monitored.Status.Down, 
+        error.message
+      ]
+    }
+  }
+}
+```
+
+### 2. Register in Service Singleton
+
+Export your service from `server/singleton/service`:
+
+```typescript
+// server/singleton/service/index.ts
+export { myService } from './my-service'
+```
+
+### 3. Update Status Dynamically
+
+Update the service status at any time:
+
+```typescript
+this[Monitored.status] = [
+  Monitored.Status.Degraded,
+  'High latency detected'
+]
+```
+
+## Monitoring Best Practices
+
+1. **Set Meaningful Descriptions**: Provide clear status messages that help diagnose issues
+2. **Use Appropriate Status Levels**:
+   - `Up`: Service is fully operational
+   - `Degraded`: Service is operational but with reduced performance
+   - `Down`: Service is unavailable
+   - `Unknown`: Status cannot be determined
+3. **Update Status on State Changes**: Reflect service state changes immediately
+4. **Monitor Critical Services**: Ensure all essential services are monitored
+5. **Regular Health Checks**: Implement periodic health checks to detect issues early
+
+## Customization
+
+### Styling
+
+The status page uses custom CSS for progress bars:
+
+```postcss
+.multi-progress-bar-container {
+  @apply overflow-hidden h-4 mb-4 text-xs flex rounded-xl shadow;
+  .multi-progress-bar {
+    @apply shadow-none flex flex-col text-center whitespace-nowrap 
+           justify-center transition-[width] duration-300 
+           overflow-hidden text-clip;
+  }
+}
+```
+
+From `src/pages/status.vue:273-278`
+
+### Localization
+
+The page includes translations for multiple languages:
+
+```yaml
+en-GB:
+  system-load: System Load
+  user: User
+  system: System
+  app-load: App Load
+  memory: Memory
+  active: Active
+  cache: Cache
+  free: Free
+
+zh-CN:
+  system-load: 系统负载
+  user: 用户
+  system: 系统
+  app-load: 应用负载
+  memory: 内存
+```
+
+From `src/pages/status.vue:61-89`
+
+### Number Formatting
+
+The page uses Intl formatters for consistent number display:
+
+```typescript
+const fmtPercent = new Intl.NumberFormat(undefined, {
+  style: 'percent',
+  minimumFractionDigits: 2,
+})
+
+const fmtCompact = new Intl.NumberFormat('en-US', {
+  style: 'unit',
+  unit: 'megabyte',
+  unitDisplay: 'narrow',
+})
+```
+
+From `src/pages/status.vue:43-53`
+
+## Technical Details
+
+### Metric Collection Interval
+
+The monitor provider collects CPU metrics every 2 seconds:
+
+```typescript
+export class MonitorProvider {
+  static interval = 2000
+  static tick: NodeJS.Timeout
+
+  static start() {
+    clearInterval(MonitorProvider.tick)
+    MonitorProvider.tick = setInterval(
+      MonitorProvider.collectLoad, 
+      MonitorProvider.interval
+    )
+  }
+}
+```
+
+From `src/server/backend/$base/server/monitor.ts:10-140`
+
+### Dependencies
+
+The status page uses:
+
+- **systeminformation**: For system metrics (CPU, memory)
+- **JsonViewer**: For displaying configuration (vue-json-viewer)
+- **TipTap**: For rendering article content
+
+## Troubleshooting
+
+### Services Show as Unknown
+
+If services display as "Unknown":
+
+1. Verify the service implements `Monitored` interface
+2. Check that the service is exported from `server/singleton/service`
+3. Ensure the service initializes its status on startup
+
+### Metrics Not Updating
+
+If admin metrics don't update:
+
+1. Confirm you have admin or owner role
+2. Check browser console for API errors
+3. Verify the monitor provider is started: `MonitorProvider.start()`
+
+### High CPU Usage
+
+If the status page shows high CPU usage:
+
+1. Check the Application Load section to identify the source
+2. Review recent code changes or background tasks
+3. Consider optimizing database queries or caching

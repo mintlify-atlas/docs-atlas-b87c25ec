@@ -1,0 +1,541 @@
+---
+title: TRPC Integration
+description: Learn how Guccho uses TRPC for type-safe client-server communication
+---
+
+## Overview
+
+Guccho uses [TRPC](https://trpc.io/) to provide end-to-end type-safe API communication between the Nuxt frontend and backend. TRPC enables auto-complete and type checking for API calls without code generation.
+
+## TRPC Setup
+
+### Server Configuration
+
+TRPC is initialized in `src/server/trpc/trpc.ts`:
+
+```typescript
+import { initTRPC } from '@trpc/server'
+import { ZodError } from 'zod'
+import type { Context } from './context'
+import { transformer } from './transformer'
+
+export const t = initTRPC.context<Context>().create({
+  transformer,
+  errorFormatter(opts) {
+    const { shape, error } = opts
+    const eData = {
+      ...(import.meta.dev ? shape.data : { 
+        code: shape.data.code, 
+        httpStatus: shape.data.httpStatus 
+      }),
+      zodError: (error.code === 'BAD_REQUEST' && error.cause instanceof ZodError)
+        ? error.cause.flatten()
+        : undefined,
+    }
+    return {
+      ...shape,
+      data: eData,
+      statusCode: shape.data.httpStatus || shape.code,
+    }
+  },
+})
+
+export const router = t.router
+export const publicProcedure = t.procedure
+export const middleware = t.middleware
+```
+
+### Context Creation
+
+The context provides request-scoped data to procedures:
+
+```typescript
+// src/server/trpc/context.ts
+import type { H3Event } from 'h3'
+import { Constant } from '../common/constants'
+
+export function createContext(e: H3Event) {
+  const session = getCookie(e, Constant.SessionLabel)
+  const persist = !!getCookie(e, Constant.Persist)
+  
+  return {
+    session: {
+      id: session,
+      persist,
+    },
+    h3Event: e,
+  }
+}
+
+export type Context = inferAsyncReturnType<typeof createContext>
+```
+
+### Nuxt API Handler
+
+TRPC is exposed as a Nuxt API endpoint:
+
+```typescript
+// src/server/api/trpc/[trpc].ts
+import { createNuxtApiHandler } from 'trpc-nuxt'
+import { appRouter } from '@/server/trpc/routers'
+import { createContext } from '@/server/trpc/context'
+
+export default createNuxtApiHandler({
+  router: appRouter,
+  createContext,
+})
+```
+
+This creates an API handler at `/api/trpc/*` that processes all TRPC requests.
+
+## Router Structure
+
+Routers are organized by domain in `src/server/trpc/routers/`:
+
+```typescript
+// src/server/trpc/routers/index.ts
+import { router } from '../trpc'
+import { router as admin } from './admin'
+import { router as article } from './article'
+import { router as user } from './user'
+import { router as score } from './score'
+// ... more routers
+
+export const appRouter = router({
+  admin,
+  article,
+  user,
+  score,
+  map,
+  rank,
+  session,
+  me,
+  status,
+  mail,
+  clan,
+})
+
+export type AppRouter = typeof appRouter
+```
+
+## Middleware
+
+Middleware adds authentication, session handling, and authorization:
+
+### Session Middleware
+
+```typescript
+// src/server/trpc/middleware/session.ts
+import { publicProcedure } from '../trpc'
+import { SessionBinding } from '../../common/session-binding'
+import { sessions } from '~/server/singleton/service'
+
+export const sessionProcedure = publicProcedure
+  .use(async ({ ctx, next }) => {
+    const opt = {
+      httpOnly: true,
+      maxAge: ctx.session.persist ? Constant.PersistDuration : undefined,
+    }
+    
+    if (!ctx.session.id) {
+      // Create new session
+      const [sessionId, session] = await sessions.create(detectDevice(ctx.h3Event))
+      setCookie(ctx.h3Event, Constant.SessionLabel, sessionId, opt)
+      
+      const sb = new SessionBinding(sessionId, { persist: ctx.session.persist })
+      sb.populate(session)
+      
+      return await next({
+        ctx: Object.assign(ctx, { session: sb }),
+      })
+    }
+    
+    // Use existing session or refresh
+    const session = await sessions.get(ctx.session.id)
+    // ... handle refresh logic
+    
+    return await next({
+      ctx: Object.assign(ctx, { session: sb }),
+    })
+  })
+```
+
+### User Middleware
+
+```typescript
+// src/server/trpc/middleware/user.ts
+import { sessionProcedure } from './session'
+import { UserProvider, users } from '~/server/singleton/service'
+
+export const userProcedure = sessionProcedure
+  .use(async ({ ctx, next }) => {
+    const session = await ctx.session.getBinding()
+    if (!session) {
+      throwGucchoError(GucchoError.UnableToRetrieveSession)
+    }
+    
+    if (!session.userId) {
+      throwGucchoError(GucchoError.YouNeedToLogin)
+    }
+    
+    const user = await users
+      .getCompactById(UserProvider.stringToId(session.userId))
+      .catch(noop)
+      
+    if (!user) {
+      throwGucchoError(GucchoError.UserNotFound)
+    }
+    
+    return await next({
+      ctx: {
+        ...ctx,
+        user: mapId(user, UserProvider.idToString),
+      },
+    })
+  })
+```
+
+### Optional User Middleware
+
+```typescript
+// src/server/trpc/middleware/optional-user.ts
+import { sessionProcedure } from './session'
+
+export const optionalUserProcedure = sessionProcedure
+  .use(async ({ ctx, next }) => {
+    const session = await ctx.session.getBinding()
+    
+    if (!session?.userId) {
+      return await next({ ctx: { ...ctx, user: undefined } })
+    }
+    
+    const user = await users
+      .getCompactById(UserProvider.stringToId(session.userId))
+      .catch(() => undefined)
+    
+    return await next({
+      ctx: {
+        ...ctx,
+        user: user ? mapId(user, UserProvider.idToString) : undefined,
+      },
+    })
+  })
+```
+
+## Creating Procedures
+
+### Query Procedure
+
+Queries retrieve data without side effects:
+
+```typescript
+// src/server/trpc/routers/user.ts
+import { router as _router, publicProcedure as p } from '../trpc'
+import { optionalUserProcedure } from '../middleware/optional-user'
+import { zodHandle, zodMode, zodRuleset } from '../shapes'
+import { object, string } from 'zod'
+import { UserProvider, users } from '~/server/singleton/service'
+
+export const router = _router({
+  // Public query - no authentication required
+  uniqueIdent: p
+    .input(zodHandle)
+    .query(({ input: handle }) => {
+      return users.uniqueIdent(handle)
+    }),
+    
+  // Query with optional authentication
+  userpage: optionalUserProcedure
+    .input(object({ handle: zodHandle }))
+    .query(async ({ input: { handle }, ctx }) => {
+      const user = await users.getFull({
+        handle,
+        excludes: { relationships: true, secrets: true, email: true },
+        includeHidden: true,
+        scope: Scope.Self,
+      })
+      
+      if (!userIsVisible(user, ctx.user)) {
+        throw userNotFoundError
+      }
+      
+      return mapId(user, UserProvider.idToString)
+    }),
+    
+  // Query with pagination
+  best: optionalUserProcedure
+    .input(object({
+      id: string(),
+      mode: zodMode,
+      ruleset: zodRuleset,
+      rankingSystem: zodLeaderboardRankingSystem,
+      page: number().gte(0).lt(10),
+      includes: array(zodRankingStatus).optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      const { mode, ruleset, rankingSystem } = input
+      
+      if (!hasRuleset(mode, ruleset) || 
+          !hasLeaderboardRankingSystem(mode, ruleset, rankingSystem)) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'ranking system not supported',
+        })
+      }
+      
+      const user = await users.getCompactById(
+        UserProvider.stringToId(input.id)
+      )
+      
+      if (!userIsVisible(user, ctx.user)) {
+        throw userNotFoundError
+      }
+      
+      const returnValue = await users.getBests({
+        id: user.id,
+        mode,
+        ruleset,
+        rankingSystem,
+        page: input.page,
+        perPage: 10,
+        rankingStatus: input.includes,
+      })
+      
+      return returnValue.map(v => ({
+        ...mapId(v, ScoreProvider.scoreIdToString),
+        beatmap: beatmapIsVisible(v.beatmap)
+          ? { ...mapId(v.beatmap, MapProvider.idToString) }
+          : v.beatmap,
+      }))
+    }),
+})
+```
+
+### Mutation Procedure
+
+Mutations modify data:
+
+```typescript
+// src/server/trpc/routers/user.ts
+import { sessionProcedure } from '../middleware/session'
+import { string, object } from 'zod'
+import { mailToken, mail, users } from '~/server/singleton/service'
+
+export const router = _router({
+  register: _router({
+    // Send email verification
+    sendEmailCode: sessionProcedure
+      .input(string().email())
+      .mutation(async ({ ctx, input }) => {
+        await ctx.session.getBinding() ?? 
+          throwGucchoError(GucchoError.SessionNotFound)
+        
+        // Check if email is taken
+        if (await users.getByEmail(input).catch(_ => undefined)) {
+          throwGucchoError(GucchoError.ConflictEmail)
+        }
+        
+        const variant = Mail.Variant.Registration
+        const { otp, token } = await mailToken.getOrCreate(input)
+        const t = await useTranslation(ctx.h3Event)
+        const serverName = t(localeKey.root.server.name.__path__)
+        
+        await mail.send({
+          to: input,
+          subject: t(mailVariant.subject.__path__, { serverName }),
+          content: t(mailVariant.content.__path__, {
+            serverName,
+            otp,
+            link: host(`/mail/verify?t=${token}&a=${variant}`, ctx.h3Event),
+            ttl: Constant.EmailTokenTTLInMinutes,
+          }),
+        })
+        
+        logger.info(`OTP sent to ${input}`, { email: input })
+      }),
+    
+    // Create account
+    createAccount: sessionProcedure
+      .input(object({
+        name: string().trim(),
+        safeName: string().trim().optional(),
+        emailToken: string().uuid(),
+        password: string().trim(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const rec = await mailToken.get({ token: input.emailToken }) ??
+          throwGucchoError(GucchoError.EmailTokenNotFound)
+        
+        const user = await users.register({
+          name: input.name,
+          safeName: input.safeName,
+          password: input.password,
+          email: rec.email,
+        })
+        
+        logger.info(`User ${user.safeName}<${user.id}> registered.`)
+        
+        await ctx.session.update({ 
+          userId: UserProvider.idToString(user.id) 
+        })
+        
+        // Background cleanup
+        mailToken.deleteAll(rec.email)
+          .catch(e => logger.error(`Failed to delete mail token: ${e}`))
+        
+        return user
+      }),
+  }),
+})
+```
+
+## Input Validation
+
+Use Zod schemas for input validation:
+
+```typescript
+// src/server/trpc/shapes/index.ts
+import { z } from 'zod'
+import { Mode, Ruleset } from '~/def'
+import { LeaderboardRankingSystem } from '$active'
+
+export const zodMode = z.nativeEnum(Mode)
+export const zodRuleset = z.nativeEnum(Ruleset)
+export const zodLeaderboardRankingSystem = z.nativeEnum(LeaderboardRankingSystem)
+
+export const zodHandle = z.string().trim().min(1).max(32)
+export const zodEmailValidation = z.object({
+  token: z.string().uuid(),
+})
+
+// Complex validation
+export const zodUserRegistration = z.object({
+  name: z.string().trim().min(3).max(32),
+  safeName: z.string().trim().optional(),
+  email: z.string().email(),
+  password: z.string().min(8),
+})
+```
+
+## Error Handling
+
+Throw TRPC errors with appropriate codes:
+
+```typescript
+import { TRPCError } from '@trpc/server'
+import { GucchoError } from '~/def/messages'
+
+// TRPC errors
+throw new TRPCError({
+  code: 'NOT_FOUND',
+  message: 'User not found',
+})
+
+throw new TRPCError({
+  code: 'UNAUTHORIZED',
+  message: 'You must be logged in',
+})
+
+// Guccho error helper
+throwGucchoError(GucchoError.UserNotFound)
+throwGucchoError(GucchoError.YouNeedToLogin)
+```
+
+## Client Usage
+
+On the client side, import and use the TRPC client:
+
+```vue
+<script setup lang="ts">
+const { $trpc } = useNuxtApp()
+
+// Query
+const { data: user, error } = await $trpc.user.userpage.useQuery({
+  handle: 'peppy'
+})
+
+// Mutation
+const registerMutation = $trpc.user.register.createAccount.useMutation()
+
+async function register() {
+  await registerMutation.mutateAsync({
+    name: 'newuser',
+    emailToken: token.value,
+    password: password.value,
+  })
+}
+</script>
+```
+
+## Type Inference
+
+TRPC automatically infers types from the router:
+
+```typescript
+import type { AppRouter } from '~/server/trpc/routers'
+
+// Client knows the exact return type
+const user = await $trpc.user.userpage.query({ handle: 'peppy' })
+// user is typed as UserFull<string>
+
+// Input validation is type-checked
+await $trpc.user.best.query({
+  id: '123',
+  mode: Mode.Osu,  // Must be valid Mode enum
+  ruleset: Ruleset.Standard,  // Must be valid Ruleset enum
+  rankingSystem: LeaderboardRankingSystem.RankedScore,
+  page: 0,
+})
+```
+
+## Best Practices
+
+### Procedure Design
+
+1. **Use queries for reads, mutations for writes**
+2. **Validate all inputs with Zod schemas**
+3. **Apply appropriate middleware** (public, session, user, role)
+4. **Handle errors consistently** using TRPC error codes
+5. **Log important operations** for debugging
+
+### Type Safety
+
+1. **Use ID transform functions** at boundaries (`idToString`, `stringToId`)
+2. **Export router types** for client inference
+3. **Define input/output types** clearly
+4. **Avoid `any` types** - use generics instead
+
+### Performance
+
+1. **Batch related queries** when possible
+2. **Paginate large result sets**
+3. **Cache frequently accessed data** in providers
+4. **Use background jobs** for non-critical operations
+
+## Data Serialization
+
+Guccho uses `superjson` for request serialization and `devalue` for responses:
+
+```typescript
+// src/server/trpc/transformer.ts
+import superjson from 'superjson'
+
+export const transformer = superjson
+```
+
+This allows serialization of:
+- `Date` objects
+- `BigInt` values
+- `Map` and `Set`
+- `undefined` values
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="sitemap" href="/development/architecture">
+    Learn about Guccho's overall system design
+  </Card>
+  <Card title="Backend Adapters" icon="plug" href="/development/backend-adapters">
+    Understand how providers are implemented
+  </Card>
+</CardGroup>
