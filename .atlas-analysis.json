@@ -1,0 +1,108 @@
+{
+  "projectType": "frontend",
+  "projectName": "Guccho",
+  "projectDescription": "A modern Nuxt 3 frontend for private osu! servers (bancho.py/ppy.sb)",
+  "theme": "palm",
+  "primaryColor": "#64748c",
+  "lightColor": "#04db83",
+  "darkColor": "#040404",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Get Started",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Configuration",
+        "groups": [
+          {
+            "group": "Setup",
+            "pages": [
+              "configuration/backend",
+              "configuration/ui",
+              "configuration/environment"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "configuration/i18n",
+              "configuration/themes"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Features",
+        "groups": [
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/user-pages",
+              "features/leaderboards",
+              "features/beatmaps",
+              "features/clans"
+            ]
+          },
+          {
+            "group": "Content",
+            "pages": [
+              "features/articles",
+              "features/status-page"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Architecture",
+            "pages": [
+              "development/architecture",
+              "development/backend-adapters",
+              "development/trpc"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/contributing",
+              "development/components"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Modern Nuxt 3 stack with Vue 3 and TypeScript",
+    "Multi-backend support (bancho.py, ppy.sb)",
+    "Internationalization (i18n) with multiple languages",
+    "User profiles and leaderboards",
+    "Clan system",
+    "Article/blog system",
+    "Server status monitoring",
+    "Beatmap browsing",
+    "TRPC for type-safe API calls",
+    "Tailwind CSS + DaisyUI theming"
+  ],
+  "publicApiSurface": [
+    "guccho.backend.config.ts - Backend configuration",
+    "guccho.ui.config.ts - UI configuration",
+    "Backend adapters: $base, bancho.py, ppy.sb@bancho.py",
+    "TRPC endpoints via /api/trpc",
+    "Components: userpage/, leaderboard/, app/",
+    "Pages: /user/:id, /leaderboard, /clans, /beatmapset/:id",
+    "i18n locales: en-GB, fr-FR, de-DE, zh-CN"
+  ]
+}
