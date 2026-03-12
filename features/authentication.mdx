@@ -1,0 +1,258 @@
+---
+title: Authentication
+description: User authentication, registration, and account management in Guccho
+---
+
+Guccho provides a comprehensive authentication system that handles user registration, login, account recovery, and profile management. The system uses email-based verification with one-time passwords (OTP) for secure authentication.
+
+## Registration
+
+New users can register by providing an email address and creating an account through a multi-step verification process.
+
+### Registration Flow
+
+1. **Email Verification** - Users enter their email address to receive a verification code
+2. **OTP Verification** - A 6-digit one-time password is sent to the provided email
+3. **Account Creation** - After email verification, users create their account with username and password
+
+<Card title="Registration Process" icon="user-plus">
+  The registration system validates email addresses and sends OTP codes for verification before allowing account creation.
+</Card>
+
+### Account Creation Requirements
+
+When creating an account, users must provide:
+
+- **Nickname** - Display name that can be changed later
+- **Username** (Optional) - Stable username for profile links (lowercase letters, numbers, and underscores only)
+- **Password** - Must contain at least one number, one uppercase letter, one lowercase letter, and be at least 8 characters long
+
+Password validation pattern:
+```regex
+(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}
+```
+
+## Login
+
+Users can log in using their username, user ID, or email address along with their password.
+
+<CardGroup cols={2}>
+  <Card title="Login" icon="right-to-bracket">
+    Sign in with username, ID, or email
+  </Card>
+  <Card title="Logout" icon="right-from-bracket">
+    Securely end your session
+  </Card>
+</CardGroup>
+
+### Login Features
+
+- **Multiple identifiers** - Login with username, user ID, or email
+- **Remember me** - Option to persist login session across browser restarts
+- **Redirect support** - Return to the page you were viewing after login
+
+The login system supports optional persistence:
+
+```typescript
+{
+  user: string
+  password: string
+  persist: boolean  // Remember me option
+}
+```
+
+## Account Recovery
+
+Users who forget their password can recover their account through an email-based recovery process.
+
+### Recovery Flow
+
+1. **Enter Email** - Provide the email address associated with the account
+2. **Verify OTP** - Enter the 6-digit code sent to your email
+3. **Set New Password** - Create a new password that meets security requirements
+4. **Confirmation** - Account recovery is complete and users can log in
+
+<Card title="Account Recovery" icon="unlock">
+  Reset your password through email verification
+</Card>
+
+The recovery process ensures both passwords match before updating:
+
+```typescript
+{
+  password: string
+  repeatPassword: string
+  token: {
+    email: string
+    otp: string
+    token: string
+  }
+}
+```
+
+## User Settings
+
+Authenticated users can manage their account settings, including profile information, avatar, email, and password.
+
+<Card title="Settings" icon="gear">
+  Manage your profile, avatar, and account preferences
+</Card>
+
+### Profile Management
+
+Users can update:
+
+- **Username/Nickname** - Change display name (if allowed by server settings)
+- **Country/Flag** - Select country or region
+- **Default Mode** - Set preferred game mode for homepage
+- **Profile Page** - Rich text profile with markdown support
+
+### Avatar Upload
+
+The avatar system includes:
+
+- **File Upload** - Drag-and-drop or click to upload
+- **Image Cropping** - Built-in cropper with 1:1 aspect ratio
+- **Size Limits** - Maximum 2MB file size
+- **Format Support** - Accepts common image formats (PNG, JPG, GIF, etc.)
+
+Avatar specifications:
+```typescript
+{
+  minHeight: 64,
+  minWidth: 64,
+  maxHeight: 640,
+  maxWidth: 640,
+  aspectRatio: 1  // Square avatars
+}
+```
+
+### Email Management
+
+Users can change their email address through a verification process:
+
+1. Enter new email address
+2. Verify with OTP sent to the new email
+3. Email is updated after successful verification
+
+<Warning>
+Email changes require verification through an OTP code sent to the new email address.
+</Warning>
+
+### Password Change
+
+Users can update their password from the settings page:
+
+- **Old Password** - Required for verification
+- **New Password** - Must meet security requirements
+- **Repeat Password** - Confirmation to prevent typos
+
+The system validates:
+- New password differs from old password
+- Both new password entries match
+- Password meets complexity requirements
+
+## Session Management
+
+Guccho tracks active user sessions across different devices and browsers.
+
+### Session Features
+
+- **Multi-device Support** - View all active sessions
+- **Device Information** - See OS, browser, and last activity time
+- **Remote Logout** - Kick sessions from other devices
+- **Current Session** - Clearly marked to prevent accidental logout
+
+Supported platforms include:
+- Windows, macOS, Linux
+- iOS, iPadOS, Android
+- ChromeOS
+- Web browsers (Chrome, Firefox, Safari, etc.)
+
+### Session Display
+
+Each session shows:
+- Operating system icon
+- Browser information (for web sessions)
+- Last activity timestamp
+- Action buttons to kick the session
+
+<Info>
+You cannot kick your current session. Use the logout button instead.
+</Info>
+
+## Friends and Relations
+
+Users can manage their friend relationships and see who has added them as a friend.
+
+<Card title="Relations" icon="users">
+  Manage your friends and relationships
+</Card>
+
+### Relationship Types
+
+- **Friends** - Mutual friend relationships
+- **Followers** - Users who have added you but you haven't added back
+
+### Friend Management
+
+Users can:
+- **Add Friends** - Send friend requests to other users
+- **Remove Friends** - Remove existing friend relationships
+- **Mutual Friends** - See which friendships are reciprocated
+- **Pending Requests** - View users who have added you
+
+The relationship system shows:
+```typescript
+{
+  relationship: Relationship[]          // Your relationship to them
+  mutualRelationship: MutualRelationship[]  // Mutual relationships
+}
+```
+
+### Friend List Features
+
+- **User Avatars** - Profile pictures for each friend
+- **Mutual Badge** - Heart icon indicates mutual friendships
+- **Profile Links** - Click to visit friend profiles
+- **Quick Actions** - Add/remove friends with one click
+
+## Security Features
+
+Guccho implements several security measures to protect user accounts:
+
+### Password Security
+
+- **Complexity Requirements** - Enforced password patterns
+- **Secure Storage** - Passwords are hashed and never stored in plaintext
+- **Password Changes** - Require old password verification
+
+### Email Verification
+
+- **OTP Codes** - 6-digit one-time passwords for verification
+- **Token-based** - Secure tokens for email verification
+- **Expiration** - Verification codes expire after a set time
+
+### Session Security
+
+- **Session Tracking** - Monitor active sessions across devices
+- **Remote Logout** - End suspicious sessions remotely
+- **Activity Logging** - Track last activity time for each session
+
+<Warning>
+Always verify the email address used for registration and recovery. This is your primary method for account recovery.
+</Warning>
+
+## Implementation Reference
+
+The authentication system is implemented across multiple Vue components:
+
+- `src/pages/auth/register.vue` - Email verification and registration flow
+- `src/pages/auth/create-account.vue` - Account creation form
+- `src/pages/auth/login.vue` - Login page with multiple identifier support
+- `src/pages/auth/logout.vue` - Session termination
+- `src/pages/auth/account-recovery.vue` - Password reset flow
+- `src/pages/me/settings.vue` - User profile and account settings
+- `src/pages/me/relations.vue` - Friends and relationship management
+
+All authentication endpoints use tRPC for type-safe API communication.

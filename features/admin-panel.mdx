@@ -1,0 +1,367 @@
+---
+title: Admin Panel
+description: Administrative dashboard for monitoring and managing your Guccho server
+---
+
+The Guccho admin panel provides comprehensive tools for server administrators to monitor metrics, manage users, moderate beatmaps, and review system logs. Access requires administrator privileges.
+
+<Warning>
+Admin panel features are only accessible to users with the `admin` role. Unauthorized access attempts will be rejected.
+</Warning>
+
+## Admin Dashboard
+
+The main dashboard displays real-time metrics across users, beatmaps, and scores with customizable time periods.
+
+<Card title="Admin Dashboard" icon="gauge-high">
+  View server metrics, user statistics, and activity trends
+</Card>
+
+### Metrics Overview
+
+The dashboard organizes metrics into three main categories:
+
+<CardGroup cols={3}>
+  <Card title="User Metrics" icon="users">
+    Total users, active users, and restricted accounts
+  </Card>
+  <Card title="Map Metrics" icon="music">
+    Total maps, ranked beatmaps, and custom content
+  </Card>
+  <Card title="Score Metrics" icon="chart-line">
+    Total scores and recent submissions
+  </Card>
+</CardGroup>
+
+### Time Period Selection
+
+Metrics can be viewed across different time periods:
+
+- **Daily** - Last 24 hours (DAU - Daily Active Users)
+- **Weekly** - Last 7 days (WAU - Weekly Active Users)
+- **Monthly** - Last 30 days (MAU - Monthly Active Users)
+
+The time period selector updates all metric cards simultaneously to show consistent data.
+
+### User Metrics
+
+<AccordionGroup>
+  <Accordion title="Total Users">
+    Displays the total number of registered users and shows growth with new user count for the selected period.
+    
+    - **Total Count** - All registered users in the database
+    - **New Users** - Users registered during the selected period (green text for positive growth)
+    - **User Loss** - Deleted accounts shown in warning color
+  </Accordion>
+
+  <Accordion title="Active Users">
+    Shows active user count based on the selected time period:
+    
+    - **DAU** - Daily Active Users (users active in last 24 hours)
+    - **WAU** - Weekly Active Users (users active in last 7 days)
+    - **MAU** - Monthly Active Users (users active in last 30 days)
+  </Accordion>
+
+  <Accordion title="Restricted Users">
+    Displays currently restricted accounts that cannot participate in rankings or certain community features.
+    
+    - **Count** - Total number of restricted accounts
+    - **Status** - Currently active restrictions
+  </Accordion>
+</AccordionGroup>
+
+### Map Metrics
+
+<AccordionGroup>
+  <Accordion title="Total Maps">
+    All beatmaps in the database, including maps from osu! (Bancho) and custom uploads.
+    
+    - **Total** - Complete beatmap count
+    - **New Maps** - Maps added during the selected period
+  </Accordion>
+
+  <Accordion title="Ranked Maps">
+    Beatmaps with ranked status that count toward performance points (pp).
+    
+    - **Ranked Count** - Maps eligible for ranking
+    - **PP Calculation** - These maps contribute to player rankings
+  </Accordion>
+
+  <Accordion title="Custom Maps">
+    Beatmaps uploaded directly to Guccho rather than mirrored from osu!.
+    
+    - **Custom Count** - Server-specific content
+    - **Community Content** - Maps created for your server
+  </Accordion>
+</AccordionGroup>
+
+### Score Metrics
+
+<AccordionGroup>
+  <Accordion title="Total Scores">
+    All scores submitted across all game modes and beatmaps.
+  </Accordion>
+
+  <Accordion title="Recent Scores">
+    Scores submitted during the selected time period, showing player activity levels.
+  </Accordion>
+</AccordionGroup>
+
+## User Management
+
+The user management interface provides powerful search and filtering capabilities for finding and managing user accounts.
+
+<Card title="User Management" icon="users-gear">
+  Search, filter, and manage user accounts
+</Card>
+
+### Search Parameters
+
+Administrators can search users by multiple criteria:
+
+<ParamField path="id" type="string">
+  User ID for direct lookup
+</ParamField>
+
+<ParamField path="name" type="string">
+  Username or display name
+</ParamField>
+
+<ParamField path="safeName" type="string">
+  Stable username used in profile links
+</ParamField>
+
+<ParamField path="email" type="string">
+  Email address associated with the account
+</ParamField>
+
+<ParamField path="flag" type="CountryCode">
+  Filter by country or region
+</ParamField>
+
+<ParamField path="roles" type="array">
+  Filter by user roles (admin, moderator, etc.)
+</ParamField>
+
+### Search Results
+
+User search results display in a paginated table with the following information:
+
+- **User Profile** - Avatar, name, and country
+- **Roles** - Badges showing assigned roles
+- **Email** - Contact information (clickable mailto link)
+- **Registration Date** - When the account was created
+- **Last Activity** - Most recent user activity
+- **Actions** - Link to detailed user management page
+
+### Pagination Controls
+
+- **Page Size** - Configure results per page (1-20 users)
+- **Page Navigation** - Jump to specific pages or use quick navigation
+- **Total Count** - Shows total matching users
+
+Example search configuration:
+```typescript
+{
+  page: 0,
+  perPage: 10,
+  name: "username",
+  roles: [UserRole.Admin]
+}
+```
+
+### Individual User Management
+
+Clicking "details" on a user opens their administrative profile page at `/admin/users/[id]` where you can:
+
+- View detailed user statistics
+- Modify user roles and permissions
+- Review user activity
+- Manage restrictions
+
+## Beatmap Management
+
+The beatmap management interface allows administrators to moderate and update beatmap status.
+
+<Card title="Beatmap Management" icon="compact-disc">
+  Search and manage beatmap rankings
+</Card>
+
+### Beatmap Search
+
+Search beatmaps using multiple criteria:
+
+- **Keyword** - Search by beatmap ID, artist, title, version, or MD5 hash
+- **Game Mode** - Filter by specific osu! game mode
+- **Player Requests** - View beatmaps requested by players
+
+### Beatmap Information
+
+Search results show detailed information for each beatmap:
+
+<Steps>
+  <Step title="Beatmapset Information">
+    - **Set ID** - Beatmapset identifier (links to osu! if from Bancho)
+    - **Artist** - Song artist
+    - **Title** - Song title (links to local beatmapset page)
+    - **Source** - Origin (Bancho or custom upload)
+  </Step>
+  
+  <Step title="Individual Beatmap Details">
+    - **Version** - Difficulty name
+    - **Beatmap ID** - Individual difficulty identifier
+    - **MD5 Hash** - File hash for verification
+    - **Vote Count** - Player requests for this map
+    - **Status** - Current ranking status
+  </Step>
+</Steps>
+
+### Ranking Status Management
+
+Administrators can update beatmap ranking status:
+
+- **Graveyard** - Inactive or abandoned beatmaps
+- **WIP** - Work in progress
+- **Pending** - Awaiting moderation
+- **Ranked** - Approved for ranking (counts pp)
+- **Approved** - Special category for marathon maps
+- **Qualified** - In qualification period
+- **Loved** - Community favorites (no pp)
+
+<Warning>
+Changing a beatmap to **Ranked** status allows it to contribute to performance points. Only rank beatmaps that meet quality standards.
+</Warning>
+
+### Batch Updates
+
+The interface supports batch operations:
+
+1. Change status for multiple beatmaps
+2. Review changes in the batch queue
+3. Click "Save" to apply all changes at once
+
+Beatmaps from osu! (Bancho) display with green links to the official website.
+
+## Logs and Monitoring
+
+The logs page provides access to system logs for debugging and monitoring server health.
+
+<Card title="Server Logs" icon="file-lines">
+  View and filter system logs
+</Card>
+
+### Log Filtering
+
+Filter logs by multiple criteria:
+
+<ParamField path="loglevel" type="LogLevel">
+  Minimum log level to display (0-6):
+  - 0: Trace
+  - 1: Debug
+  - 2: Info
+  - 3: Warn
+  - 4: Error
+  - 5: Fatal
+  - 6: Silent
+</ParamField>
+
+<ParamField path="last" type="number">
+  Number of recent log entries to fetch (default: 50)
+</ParamField>
+
+<ParamField path="direction" type="'asc' | 'desc'">
+  Sort order for log entries (ascending or descending)
+</ParamField>
+
+### Log Display
+
+Each log entry shows:
+
+- **Timestamp** - When the event occurred (localized)
+- **Level** - Log severity level
+- **Label** - Log category or component
+- **Backend** - Which backend service generated the log
+- **Message** - Detailed log message
+
+### Log Management
+
+<Accordion title="Truncate Logs">
+  Administrators can clear all logs using the "truncate" button. This action is irreversible and should be used carefully.
+  
+  <Warning>
+  Truncating logs permanently deletes all log entries. Make sure to export any important logs before truncating.
+  </Warning>
+</Accordion>
+
+## Access Control
+
+Admin panel access is restricted through middleware:
+
+```typescript
+definePageMeta({
+  middleware: 'admin',
+})
+```
+
+### Permission Levels
+
+Users must have the `admin` role to access administrative features. The system checks:
+
+1. **User Authentication** - Must be logged in
+2. **Role Verification** - Must have admin privileges
+3. **Session Validity** - Active session required
+
+Unauthorized access attempts are redirected to the login page or show an error.
+
+### Role-Based Features
+
+Different admin features may require different permission levels:
+
+- **Metrics Dashboard** - Read-only admin access
+- **User Management** - User moderation privileges
+- **Beatmap Management** - Content moderation privileges
+- **System Logs** - Full admin access
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Regular Monitoring">
+    - Check user metrics daily to track growth
+    - Monitor active user trends to gauge engagement
+    - Review restricted accounts periodically
+  </Accordion>
+
+  <Accordion title="Beatmap Moderation">
+    - Only rank beatmaps that meet quality standards
+    - Respond to player beatmap requests promptly
+    - Review custom beatmaps before ranking
+  </Accordion>
+
+  <Accordion title="User Management">
+    - Investigate unusual account activity
+    - Manage roles and permissions carefully
+    - Keep user data secure and private
+  </Accordion>
+
+  <Accordion title="System Maintenance">
+    - Review logs regularly for errors
+    - Monitor server performance through metrics
+    - Keep log levels appropriate for production
+  </Accordion>
+</AccordionGroup>
+
+## Implementation Reference
+
+The admin panel is implemented across these files:
+
+- `src/pages/admin/index.vue` - Main dashboard with metrics
+- `src/pages/admin/users/index.vue` - User search and management
+- `src/pages/admin/users/[id]/index.vue` - Individual user details
+- `src/pages/admin/beatmaps.vue` - Beatmap search and status management
+- `src/pages/admin/logs.vue` - Log viewer and management
+
+All admin endpoints use tRPC with authentication and authorization checks.
+
+<Info>
+The admin panel uses reactive data fetching with automatic updates when filters change. Loading states and error handling are built into all components.
+</Info>

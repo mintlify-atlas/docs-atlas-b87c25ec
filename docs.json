@@ -67,7 +67,8 @@
               "features/user-pages",
               "features/leaderboards",
               "features/beatmaps",
-              "features/clans"
+              "features/clans",
+              "features/authentication"
             ]
           },
           {
@@ -75,6 +76,12 @@
             "pages": [
               "features/articles",
               "features/status-page"
+            ]
+          },
+          {
+            "group": "Administration",
+            "pages": [
+              "features/admin-panel"
             ]
           }
         ]

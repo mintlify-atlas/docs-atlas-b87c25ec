@@ -22,7 +22,7 @@ Articles are stored in the `articles/` directory as binary BSON files with the `
 
 ### File Organization
 
-```
+```plaintext
 articles/
 ├── fallbacks/              # System fallback pages
 │   ├── 403.gal/
@@ -40,7 +40,7 @@ articles/
 
 Articles can have different versions for different languages. Create localized versions by adding subdirectories with language codes:
 
-```
+```plaintext
 my-announcement.gal/
 ├── en-GB
 ├── zh-CN
@@ -55,7 +55,7 @@ The system automatically selects the appropriate version based on the user's lan
 Articles are displayed at `/article/[slug]` where `slug` is the article path.
 
 **Example**: An article at `articles/announcements/welcome.gal` is accessible at:
-```
+```plaintext
 /article/announcements/welcome
 ```
 
